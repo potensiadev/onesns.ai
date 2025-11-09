@@ -1,8 +1,19 @@
-import { Sparkles } from "lucide-react";
+import { Sparkles, Settings } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 
 export const Hero = () => {
   return (
-    <section className="text-center py-16 md:py-24">
+    <section className="text-center py-16 md:py-24 relative">
+      <div className="absolute top-4 right-4">
+        <Link to="/connections">
+          <Button variant="outline" size="sm" className="gap-2">
+            <Settings className="w-4 h-4" />
+            Manage Connections
+          </Button>
+        </Link>
+      </div>
+
       <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full mb-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
         <Sparkles className="w-4 h-4 text-primary" />
         <span className="text-sm font-medium text-primary">AI-Powered Multi-Platform Content</span>
