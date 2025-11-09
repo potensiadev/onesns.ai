@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,6 +12,12 @@ interface PublishRequest {
   content: string;
   accountId: string;
 }
+
+const publishRequestSchema = z.object({
+  platform: z.enum(['twitter', 'reddit', 'threads', 'instagram', 'pinterest']),
+  content: z.string().min(1).max(10000),
+  accountId: z.string().uuid(),
+});
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -34,7 +41,17 @@ serve(async (req) => {
       throw new Error("Unauthorized");
     }
 
-    const { platform, content, accountId }: PublishRequest = await req.json();
+    const requestBody = await req.json();
+    const validationResult = publishRequestSchema.safeParse(requestBody);
+    
+    if (!validationResult.success) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Invalid request data" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const { platform, content, accountId } = validationResult.data;
 
     console.log(`Publishing to ${platform} for user ${user.id}`);
 
@@ -101,7 +118,8 @@ async function publishToTwitter(content: string, accessToken: string) {
 
   if (!response.ok) {
     const error = await response.text();
-    throw new Error(`Twitter API error: ${error}`);
+    console.error(`Twitter API error:`, error);
+    throw new Error("Failed to publish to Twitter. Please check your connection and token.");
   }
 
   return await response.json();
@@ -129,7 +147,8 @@ async function publishToThreads(content: string, accessToken: string) {
 
   if (!response.ok) {
     const error = await response.text();
-    throw new Error(`Threads API error: ${error}`);
+    console.error(`Threads API error:`, error);
+    throw new Error("Failed to create Threads post. Please check your token.");
   }
 
   const data = await response.json();
@@ -146,7 +165,8 @@ async function publishToThreads(content: string, accessToken: string) {
 
   if (!publishResponse.ok) {
     const error = await publishResponse.text();
-    throw new Error(`Threads publish error: ${error}`);
+    console.error(`Threads publish error:`, error);
+    throw new Error("Failed to publish Threads post. Please try again.");
   }
 
   return await publishResponse.json();

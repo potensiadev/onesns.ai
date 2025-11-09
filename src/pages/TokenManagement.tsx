@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Loader2, ArrowLeft, Plus, Trash2, Eye, EyeOff } from "lucide-react";
+import { z } from "zod";
 import {
   Dialog,
   DialogContent,
@@ -31,6 +32,13 @@ const PLATFORMS = [
   { id: "twitter", name: "X (Twitter)", icon: "🐦" },
   { id: "pinterest", name: "Pinterest", icon: "📌" },
 ];
+
+const tokenSchema = z.object({
+  platform: z.enum(['reddit', 'threads', 'instagram', 'twitter', 'pinterest']),
+  account_name: z.string().max(100).optional(),
+  access_token: z.string().min(10, "액세스 토큰은 최소 10자 이상이어야 합니다").max(1000, "액세스 토큰이 너무 깁니다"),
+  refresh_token: z.string().min(10, "리프레시 토큰은 최소 10자 이상이어야 합니다").max(1000, "리프레시 토큰이 너무 깁니다").optional().or(z.literal('')),
+});
 
 const TokenManagement = () => {
   const navigate = useNavigate();
@@ -89,12 +97,15 @@ const TokenManagement = () => {
   };
 
   const handleSaveToken = async () => {
-    if (!formData.platform || !formData.access_token) {
-      toast.error("플랫폼과 액세스 토큰은 필수입니다");
-      return;
-    }
-
     try {
+      // Validate input using zod schema
+      const validationResult = tokenSchema.safeParse(formData);
+      if (!validationResult.success) {
+        const firstError = validationResult.error.errors[0];
+        toast.error(firstError.message);
+        return;
+      }
+
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("User not authenticated");
 
