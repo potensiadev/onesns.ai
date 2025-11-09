@@ -1,9 +1,11 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Copy, RefreshCw } from "lucide-react";
+import { Copy, Send } from "lucide-react";
 import { toast } from "sonner";
 import { GeneratedContent } from "@/pages/Index";
 import { Badge } from "@/components/ui/badge";
+import { supabase } from "@/integrations/supabase/client";
+import { useState, useEffect } from "react";
 
 interface ResultCardsProps {
   content: GeneratedContent;
@@ -43,9 +45,66 @@ const PLATFORM_CONFIG = {
 };
 
 export const ResultCards = ({ content }: ResultCardsProps) => {
+  const [connectedAccounts, setConnectedAccounts] = useState<Record<string, string>>({});
+  const [publishing, setPublishing] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchConnectedAccounts();
+  }, []);
+
+  const fetchConnectedAccounts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("social_accounts")
+        .select("id, platform");
+
+      if (error) throw error;
+
+      const accountsMap: Record<string, string> = {};
+      data?.forEach((account) => {
+        accountsMap[account.platform] = account.id;
+      });
+      setConnectedAccounts(accountsMap);
+    } catch (error) {
+      console.error("Error fetching connected accounts:", error);
+    }
+  };
+
   const copyToClipboard = (text: string, platform: string) => {
     navigator.clipboard.writeText(text);
     toast.success(`${platform} post copied to clipboard!`);
+  };
+
+  const publishPost = async (platform: string, postContent: string) => {
+    const accountId = connectedAccounts[platform];
+    if (!accountId) {
+      toast.error(`${platform}에 연결된 계정이 없습니다. 먼저 토큰을 등록하세요.`);
+      return;
+    }
+
+    setPublishing(platform);
+    try {
+      const { data, error } = await supabase.functions.invoke("publish-post", {
+        body: { 
+          platform, 
+          content: postContent,
+          accountId 
+        },
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        toast.success(`${PLATFORM_CONFIG[platform as keyof typeof PLATFORM_CONFIG].name}에 성공적으로 게시되었습니다!`);
+      } else {
+        throw new Error(data.error || "게시에 실패했습니다");
+      }
+    } catch (error: any) {
+      console.error("Error publishing post:", error);
+      toast.error(error.message || `${platform} 게시에 실패했습니다`);
+    } finally {
+      setPublishing(null);
+    }
   };
 
   return (
@@ -88,11 +147,25 @@ export const ResultCards = ({ content }: ResultCardsProps) => {
                     onClick={() => copyToClipboard(text, config.name)}
                   >
                     <Copy className="w-4 h-4 mr-2" />
-                    Copy
+                    복사
                   </Button>
-                  <Button variant="outline" size="sm" disabled>
-                    <RefreshCw className="w-4 h-4" />
-                  </Button>
+                  {connectedAccounts[platform] && (
+                    <Button
+                      size="sm"
+                      onClick={() => publishPost(platform, text)}
+                      disabled={publishing === platform}
+                      className="gap-2"
+                    >
+                      {publishing === platform ? (
+                        <>업로드 중...</>
+                      ) : (
+                        <>
+                          <Send className="w-4 h-4" />
+                          업로드
+                        </>
+                      )}
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
