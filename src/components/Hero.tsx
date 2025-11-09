@@ -1,19 +1,61 @@
-import { Sparkles, Settings } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Sparkles, Settings, LogIn, UserPlus } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import UserMenu from "./UserMenu";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { User } from "@supabase/supabase-js";
 
 export const Hero = () => {
+  const navigate = useNavigate();
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
   return (
     <section className="text-center py-16 md:py-24 relative">
       <div className="absolute top-4 right-4 flex items-center gap-2">
-        <Link to="/connections">
-          <Button variant="outline" size="sm" className="gap-2">
-            <Settings className="w-4 h-4" />
-            연결 관리
-          </Button>
-        </Link>
-        <UserMenu />
+        {user ? (
+          <>
+            <Link to="/connections">
+              <Button variant="outline" size="sm" className="gap-2">
+                <Settings className="w-4 h-4" />
+                연결 관리
+              </Button>
+            </Link>
+            <UserMenu />
+          </>
+        ) : (
+          <>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="gap-2"
+              onClick={() => navigate("/auth")}
+            >
+              <LogIn className="w-4 h-4" />
+              로그인
+            </Button>
+            <Button 
+              size="sm" 
+              className="gap-2"
+              onClick={() => navigate("/auth")}
+            >
+              <UserPlus className="w-4 h-4" />
+              회원가입
+            </Button>
+          </>
+        )}
       </div>
 
       <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full mb-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
