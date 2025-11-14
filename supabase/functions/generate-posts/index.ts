@@ -7,12 +7,25 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const generateRequestSchema = z.object({
+const simpleGenerateSchema = z.object({
+  type: z.literal("simple"),
   topic: z.string().min(1).max(200),
   content: z.string().min(1).max(3000),
   tone: z.string().min(1).max(50),
   platforms: z.array(z.enum(['reddit', 'threads', 'instagram', 'twitter', 'pinterest'])).min(1).max(5),
 });
+
+const blogGenerateSchema = z.object({
+  type: z.literal("blog"),
+  blogContent: z.string().min(1).max(10000),
+  keyMessage: z.string().max(500).optional(),
+  platforms: z.array(z.enum(['reddit', 'threads', 'instagram', 'twitter', 'pinterest'])).min(1).max(5),
+});
+
+const generateRequestSchema = z.discriminatedUnion("type", [
+  simpleGenerateSchema,
+  blogGenerateSchema,
+]);
 
 const PLATFORM_PROMPTS = {
   reddit: `Create a Reddit post that:
@@ -90,41 +103,29 @@ serve(async (req) => {
     // Validate input
     const requestBody = await req.json();
     const validationResult = generateRequestSchema.safeParse(requestBody);
-    
+
     if (!validationResult.success) {
+      console.error("Validation error:", validationResult.error);
       return new Response(
-        JSON.stringify({ error: "Invalid request data" }),
+        JSON.stringify({ error: "Invalid request data", details: validationResult.error }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const { topic, content, tone, platforms } = validationResult.data;
+    const requestData = validationResult.data;
+    const platforms = requestData.platforms;
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    console.log("Generating posts for platforms:", platforms);
+    console.log("Request type:", requestData.type, "Platforms:", platforms);
 
     const posts: Record<string, string> = {};
 
-    // Generate content for each selected platform
-    for (const platform of platforms) {
-      const prompt = PLATFORM_PROMPTS[platform as keyof typeof PLATFORM_PROMPTS];
-      
-      const systemPrompt = `You are an expert social media content creator specializing in ${platform}. 
-Your task is to create viral-worthy, platform-native content that resonates with the audience.
-Tone: ${tone}
-Follow the platform-specific guidelines exactly.`;
-
-      const userPrompt = `${prompt}
-
-Topic: ${topic}
-Content: ${content}
-
-Generate ONLY the post content. Do not include any meta-commentary, explanations, or labels.`;
-
+    // Helper function to call AI
+    async function callAI(systemPrompt: string, userPrompt: string) {
       const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -142,25 +143,143 @@ Generate ONLY the post content. Do not include any meta-commentary, explanations
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`AI gateway error for ${platform}:`, response.status, errorText);
-        
+        console.error("AI gateway error:", response.status, errorText);
+
         if (response.status === 429) {
-          return new Response(
-            JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }),
-            { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+          return { error: "Rate limit exceeded. Please try again in a moment.", status: 429 };
         }
         if (response.status === 402) {
-          return new Response(
-            JSON.stringify({ error: "AI credits depleted. Please add credits to continue." }),
-            { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+          return { error: "AI credits depleted. Please add credits to continue.", status: 402 };
         }
         throw new Error(`AI gateway error: ${response.status}`);
       }
 
       const data = await response.json();
-      posts[platform] = data.choices?.[0]?.message?.content || "";
+      return { content: data.choices?.[0]?.message?.content || "", status: 200 };
+    }
+
+    // Branch based on request type
+    if (requestData.type === "simple") {
+      // Original simple generation logic
+      const { topic, content, tone } = requestData;
+
+      for (const platform of platforms) {
+        const prompt = PLATFORM_PROMPTS[platform as keyof typeof PLATFORM_PROMPTS];
+
+        const systemPrompt = `You are an expert social media content creator specializing in ${platform}.
+Your task is to create viral-worthy, platform-native content that resonates with the audience.
+Tone: ${tone}
+Follow the platform-specific guidelines exactly.`;
+
+        const userPrompt = `${prompt}
+
+Topic: ${topic}
+Content: ${content}
+
+Generate ONLY the post content. Do not include any meta-commentary, explanations, or labels.`;
+
+        const result = await callAI(systemPrompt, userPrompt);
+
+        if (result.error) {
+          return new Response(
+            JSON.stringify({ error: result.error }),
+            { status: result.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        posts[platform] = result.content;
+      }
+    } else {
+      // Blog analysis and conversion logic
+      const { blogContent, keyMessage } = requestData;
+
+      console.log("Analyzing blog content (length: " + blogContent.length + " chars)");
+
+      // Step 1: Analyze and summarize the blog
+      const analysisSystemPrompt = `You are an expert content analyst and social media strategist.
+Your task is to analyze blog content and extract key insights for social media distribution.`;
+
+      const analysisUserPrompt = `Analyze the following blog post and extract:
+1. Main topic/theme
+2. 3-5 key takeaways or insights
+3. Target audience
+4. Emotional tone
+5. Call-to-action (if any)
+
+${keyMessage ? `The author wants to emphasize: ${keyMessage}\n\n` : ''}
+
+Blog content:
+${blogContent}
+
+Provide a structured summary in JSON format:
+{
+  "mainTopic": "...",
+  "keyTakeaways": ["...", "...", "..."],
+  "targetAudience": "...",
+  "tone": "...",
+  "cta": "..."
+}`;
+
+      const analysisResult = await callAI(analysisSystemPrompt, analysisUserPrompt);
+
+      if (analysisResult.error) {
+        return new Response(
+          JSON.stringify({ error: analysisResult.error }),
+          { status: analysisResult.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      console.log("Blog analysis complete:", analysisResult.content);
+
+      let blogSummary;
+      try {
+        blogSummary = JSON.parse(analysisResult.content);
+      } catch (e) {
+        // If JSON parsing fails, create a simple summary
+        console.error("Failed to parse blog analysis, using fallback");
+        blogSummary = {
+          mainTopic: "Blog content",
+          keyTakeaways: [blogContent.substring(0, 200)],
+          targetAudience: "General audience",
+          tone: "Professional",
+          cta: "",
+        };
+      }
+
+      // Step 2: Generate platform-specific posts based on the summary
+      for (const platform of platforms) {
+        const platformPrompt = PLATFORM_PROMPTS[platform as keyof typeof PLATFORM_PROMPTS];
+
+        const systemPrompt = `You are an expert social media content creator specializing in ${platform}.
+Your task is to transform blog content into viral-worthy, platform-native posts.
+Follow the platform-specific guidelines exactly.`;
+
+        const userPrompt = `${platformPrompt}
+
+Based on this blog analysis:
+- Main Topic: ${blogSummary.mainTopic}
+- Key Takeaways: ${blogSummary.keyTakeaways.join(", ")}
+- Target Audience: ${blogSummary.targetAudience}
+- Tone: ${blogSummary.tone}
+- CTA: ${blogSummary.cta}
+
+${keyMessage ? `IMPORTANT: Make sure to emphasize this key message: ${keyMessage}\n` : ''}
+
+Create a ${platform} post that captures the essence of the blog while being optimized for ${platform}'s unique format and audience.
+
+Generate ONLY the post content. Do not include any meta-commentary, explanations, or labels.`;
+
+        const result = await callAI(systemPrompt, userPrompt);
+
+        if (result.error) {
+          return new Response(
+            JSON.stringify({ error: result.error }),
+            { status: result.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        posts[platform] = result.content;
+      }
     }
 
     console.log("Successfully generated posts for all platforms");
