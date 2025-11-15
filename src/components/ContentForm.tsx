@@ -15,7 +15,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, Sparkles } from "lucide-react";
 
 interface ContentFormProps {
-  onGenerate: (topic: string, content: string, tone: string, platforms: string[]) => void;
+  onGenerate: (
+    topic: string,
+    content: string,
+    tone: string,
+    platforms: string[]
+  ) => Promise<void>;
   isGenerating: boolean;
 }
 
@@ -42,10 +47,28 @@ export const ContentForm = ({ onGenerate, isGenerating }: ContentFormProps) => {
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(
     PLATFORMS.map((p) => p.id)
   );
+  const [formError, setFormError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const isFormDisabled = isGenerating || isSubmitting;
+
+  const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
-    onGenerate(topic, content, tone, selectedPlatforms);
+    setFormError(null);
+    setIsSubmitting(true);
+
+    try {
+      await onGenerate(topic, content, tone, selectedPlatforms);
+    } catch (error) {
+      console.error("Form submission failed", error);
+      setFormError(
+        error instanceof Error
+          ? error.message
+          : "Failed to generate content. Please try again."
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const togglePlatform = (platformId: string) => {
@@ -59,7 +82,12 @@ export const ContentForm = ({ onGenerate, isGenerating }: ContentFormProps) => {
   return (
     <Card className="shadow-lg mb-12 animate-in fade-in slide-in-from-bottom-10 duration-700 delay-300">
       <CardContent className="pt-6">
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleGenerate} className="space-y-6" aria-busy={isFormDisabled}>
+          {formError && (
+            <div role="alert" className="rounded-lg border border-destructive/50 bg-destructive/5 p-4 text-destructive text-sm">
+              {formError}
+            </div>
+          )}
           <div className="space-y-2">
             <Label htmlFor="topic">Content Topic</Label>
             <Input
@@ -69,6 +97,7 @@ export const ContentForm = ({ onGenerate, isGenerating }: ContentFormProps) => {
               onChange={(e) => setTopic(e.target.value)}
               required
               className="h-12"
+              disabled={isFormDisabled}
             />
           </div>
 
@@ -81,12 +110,13 @@ export const ContentForm = ({ onGenerate, isGenerating }: ContentFormProps) => {
               onChange={(e) => setContent(e.target.value)}
               required
               className="min-h-32 resize-none"
+              disabled={isFormDisabled}
             />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="tone">Tone & Style</Label>
-            <Select value={tone} onValueChange={setTone}>
+            <Select value={tone} onValueChange={setTone} disabled={isFormDisabled}>
               <SelectTrigger id="tone" className="h-12">
                 <SelectValue />
               </SelectTrigger>
@@ -112,6 +142,7 @@ export const ContentForm = ({ onGenerate, isGenerating }: ContentFormProps) => {
                     id={platform.id}
                     checked={selectedPlatforms.includes(platform.id)}
                     onCheckedChange={() => togglePlatform(platform.id)}
+                    disabled={isFormDisabled}
                   />
                   <Label
                     htmlFor={platform.id}
@@ -127,10 +158,10 @@ export const ContentForm = ({ onGenerate, isGenerating }: ContentFormProps) => {
           <Button
             type="submit"
             size="lg"
-            disabled={isGenerating}
+            disabled={isFormDisabled}
             className="w-full h-14 text-lg font-semibold bg-gradient-primary hover:opacity-90 transition-opacity shadow-glow"
           >
-            {isGenerating ? (
+            {isFormDisabled ? (
               <>
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                 Generating Amazing Content...

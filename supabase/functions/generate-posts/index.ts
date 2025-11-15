@@ -7,6 +7,14 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Helper function for consistent JSON responses
+function jsonResponse(data: any, status = 200) {
+  return new Response(
+    JSON.stringify(data),
+    { status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+  );
+}
+
 const simpleGenerateSchema = z.object({
   type: z.literal("simple"),
   topic: z.string().min(1).max(200),
@@ -80,9 +88,9 @@ serve(async (req) => {
     // Verify authentication
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: "Missing authorization header" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      return jsonResponse(
+        { error: "Missing authorization header" },
+        401
       );
     }
 
@@ -94,9 +102,9 @@ serve(async (req) => {
 
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) {
-      return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      return jsonResponse(
+        { error: "Invalid or expired authentication token" },
+        403
       );
     }
 
@@ -106,9 +114,12 @@ serve(async (req) => {
 
     if (!validationResult.success) {
       console.error("Validation error:", validationResult.error);
-      return new Response(
-        JSON.stringify({ error: "Invalid request data", details: validationResult.error }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      return jsonResponse(
+        {
+          error: "Invalid request data",
+          details: validationResult.error.format()
+        },
+        400
       );
     }
 
@@ -151,11 +162,33 @@ serve(async (req) => {
         if (response.status === 402) {
           return { error: "AI credits depleted. Please add credits to continue.", status: 402 };
         }
-        throw new Error(`AI gateway error: ${response.status}`);
+        return {
+          error: `AI model error: ${response.status} - ${errorText.substring(0, 200)}`,
+          status: 502
+        };
       }
 
-      const data = await response.json();
-      return { content: data.choices?.[0]?.message?.content || "", status: 200 };
+      let data;
+      try {
+        data = await response.json();
+      } catch (parseError) {
+        console.error("Failed to parse AI response JSON:", parseError);
+        return {
+          error: "AI model returned invalid response format",
+          status: 502
+        };
+      }
+
+      const content = data?.choices?.[0]?.message?.content;
+      if (!content || typeof content !== "string" || content.trim().length === 0) {
+        console.error("AI response missing content:", data);
+        return {
+          error: "AI model did not generate any content. Please try again.",
+          status: 502
+        };
+      }
+
+      return { content, status: 200 };
     }
 
     // Branch based on request type
@@ -181,10 +214,7 @@ Generate ONLY the post content. Do not include any meta-commentary, explanations
         const result = await callAI(systemPrompt, userPrompt);
 
         if (result.error) {
-          return new Response(
-            JSON.stringify({ error: result.error }),
-            { status: result.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+          return jsonResponse({ error: result.error }, result.status);
         }
 
         posts[platform] = result.content;
@@ -223,10 +253,7 @@ Provide a structured summary in JSON format:
       const analysisResult = await callAI(analysisSystemPrompt, analysisUserPrompt);
 
       if (analysisResult.error) {
-        return new Response(
-          JSON.stringify({ error: analysisResult.error }),
-          { status: analysisResult.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return jsonResponse({ error: analysisResult.error }, analysisResult.status);
       }
 
       console.log("Blog analysis complete:", analysisResult.content);
@@ -272,10 +299,7 @@ Generate ONLY the post content. Do not include any meta-commentary, explanations
         const result = await callAI(systemPrompt, userPrompt);
 
         if (result.error) {
-          return new Response(
-            JSON.stringify({ error: result.error }),
-            { status: result.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+          return jsonResponse({ error: result.error }, result.status);
         }
 
         posts[platform] = result.content;
@@ -284,15 +308,12 @@ Generate ONLY the post content. Do not include any meta-commentary, explanations
 
     console.log("Successfully generated posts for all platforms");
 
-    return new Response(
-      JSON.stringify({ posts }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return jsonResponse({ posts });
   } catch (error) {
     console.error("Error in generate-posts function:", error);
-    return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    return jsonResponse(
+      { error: error instanceof Error ? error.message : "Unknown error" },
+      500
     );
   }
 });

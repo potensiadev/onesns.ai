@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Copy, Send, CheckCircle, XCircle, Loader2, RefreshCw } from "lucide-react";
+import { Copy, Send, CheckCircle2, AlertTriangle, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { GeneratedContent } from "@/pages/Index";
 import { Badge } from "@/components/ui/badge";
@@ -49,12 +49,17 @@ const PLATFORM_CONFIG = {
     color: "border-platform-pinterest",
     bgColor: "bg-platform-pinterest/10",
   },
-};
+} as const;
+
+type PlatformKey = keyof typeof PLATFORM_CONFIG;
+
+const REQUIRED_PLATFORMS = Object.keys(PLATFORM_CONFIG) as PlatformKey[];
 
 export const ResultCards = ({ content }: ResultCardsProps) => {
   const [connectedAccounts, setConnectedAccounts] = useState<Record<string, string>>({});
   const [platformStatuses, setPlatformStatuses] = useState<Record<string, PlatformStatus>>({});
   const [isPublishingAll, setIsPublishingAll] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchConnectedAccounts();
@@ -64,6 +69,21 @@ export const ResultCards = ({ content }: ResultCardsProps) => {
       initialStatuses[platform] = { status: "idle" };
     });
     setPlatformStatuses(initialStatuses);
+  }, [content]);
+
+  useEffect(() => {
+    const missingFields = REQUIRED_PLATFORMS.filter((platform) => {
+      const value = content?.[platform];
+      return typeof value !== "string" || value.trim().length === 0;
+    });
+
+    if (missingFields.length > 0) {
+      const message = `Generated response is missing content for: ${missingFields.join(", ")}`;
+      setValidationError(message);
+      toast.error(message);
+    } else {
+      setValidationError(null);
+    }
   }, [content]);
 
   const fetchConnectedAccounts = async () => {
@@ -212,6 +232,18 @@ export const ResultCards = ({ content }: ResultCardsProps) => {
   const connectedCount = Object.keys(content).filter(p => connectedAccounts[p]).length;
   const hasFailedPosts = Object.values(platformStatuses).some(s => s.status === "error");
 
+  if (validationError) {
+    return (
+      <div
+        role="alert"
+        className="rounded-lg border border-destructive/50 bg-destructive/5 p-6 text-destructive"
+      >
+        <h2 className="text-xl font-semibold mb-2">Unable to display generated posts</h2>
+        <p>{validationError}</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-12 duration-700">
       <div className="text-center mb-8">
@@ -286,8 +318,8 @@ export const ResultCards = ({ content }: ResultCardsProps) => {
                       {text.length} chars
                     </Badge>
                     {isPublishing && <Loader2 className="h-4 w-4 animate-spin text-blue-500" />}
-                    {isSuccess && <CheckCircle className="h-4 w-4 text-green-500" />}
-                    {isError && <XCircle className="h-4 w-4 text-red-500" />}
+                    {isSuccess && <CheckCircle2 className="h-4 w-4 text-green-500" />}
+                    {isError && <AlertTriangle className="h-4 w-4 text-red-500" />}
                   </div>
                 </CardTitle>
               </CardHeader>
@@ -329,7 +361,7 @@ export const ResultCards = ({ content }: ResultCardsProps) => {
                         </>
                       ) : isSuccess ? (
                         <>
-                          <CheckCircle className="w-4 h-4" />
+                          <CheckCircle2 className="w-4 h-4" />
                           완료
                         </>
                       ) : (
