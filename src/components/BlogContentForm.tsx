@@ -112,12 +112,17 @@ export const BlogContentForm = ({ onGenerate, isGenerating }: BlogContentFormPro
               {PLATFORMS.map((platform) => (
                 <div
                   key={platform.id}
-                  className="flex items-center space-x-2 p-3 rounded-lg border hover:border-primary/50 transition-colors"
+                  className={`flex items-center space-x-2 p-3 rounded-lg border-2 transition-all ${
+                    selectedPlatforms.includes(platform.id)
+                      ? `border-${platform.color} bg-${platform.color}/10 shadow-md`
+                      : 'border-border hover:border-muted-foreground/30'
+                  }`}
                 >
                   <Checkbox
                     id={`blog-${platform.id}`}
                     checked={selectedPlatforms.includes(platform.id)}
                     onCheckedChange={() => togglePlatform(platform.id)}
+                    className={selectedPlatforms.includes(platform.id) ? `data-[state=checked]:bg-${platform.color} data-[state=checked]:border-${platform.color}` : ''}
                   />
                   <Label
                     htmlFor={`blog-${platform.id}`}
