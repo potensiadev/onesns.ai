@@ -15,7 +15,7 @@ function jsonResponse(data: any, status = 200) {
   );
 }
 
-const allowedPlatforms = ["twitter"] as const;
+const allowedPlatforms = ["twitter", "instagram", "reddit", "threads", "pinterest"] as const;
 const platformEnum = z.enum(allowedPlatforms);
 
 const simpleGenerateSchema = z.object({
@@ -23,14 +23,14 @@ const simpleGenerateSchema = z.object({
   topic: z.string().min(1).max(200),
   content: z.string().min(1).max(3000),
   tone: z.string().min(1).max(50),
-  platforms: z.array(platformEnum).min(1).max(1),
+  platforms: z.array(platformEnum).min(1).max(5),
 });
 
 const blogGenerateSchema = z.object({
   type: z.literal("blog"),
   blogContent: z.string().min(1).max(10000),
   keyMessage: z.string().max(500).optional(),
-  platforms: z.array(platformEnum).min(1).max(1),
+  platforms: z.array(platformEnum).min(1).max(5),
 });
 
 const generateRequestSchema = z.discriminatedUnion("type", [
@@ -46,6 +46,38 @@ const PLATFORM_PROMPTS = {
 - Can include 1-2 relevant hashtags
 - Optional: Add a subtle CTA or question
 - Make every word count`,
+  
+  instagram: `Create an Instagram caption that:
+- Starts with a hook to grab attention
+- Tells a mini-story or shares valuable insight
+- Maximum 2200 characters but be concise
+- Include 5-10 relevant hashtags at the end
+- Use line breaks for readability
+- Engaging and visual language`,
+
+  reddit: `Create a Reddit post that:
+- Has an informative, specific title
+- Provides genuine value to the community
+- Conversational and authentic tone
+- Maximum 40000 characters but be concise
+- Avoid promotional language
+- Encourage discussion with a question`,
+
+  threads: `Create a Threads post that:
+- Conversational and personal tone
+- Maximum 500 characters
+- Can be part of a thread (indicate if continues)
+- Authentic and engaging
+- Use emojis sparingly
+- Encourage interaction`,
+
+  pinterest: `Create a Pinterest pin description that:
+- SEO-optimized with keywords
+- Maximum 500 characters
+- Action-oriented language
+- Include relevant hashtags
+- Clear value proposition
+- Inspire saving and clicking`,
 };
 
 serve(async (req) => {
