@@ -20,7 +20,7 @@ const PLATFORMS = [
   { id: "pinterest", label: "Pinterest", color: "platform-pinterest" }
 ];
 
-const MAX_CHARS = 10000; // 블로그 최대 글자 수 제한
+const MAX_CHARS = 3000; // Backend limit for content
 
 export const BlogContentForm = ({ onGenerate, isGenerating }: BlogContentFormProps) => {
   const [blogContent, setBlogContent] = useState("");
