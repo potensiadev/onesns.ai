@@ -72,7 +72,9 @@ export const ResultCards = ({ content }: ResultCardsProps) => {
   }, [content]);
 
   useEffect(() => {
-    const missingFields = REQUIRED_PLATFORMS.filter((platform) => {
+    // Only validate platforms that are actually in the generated content
+    const generatedPlatforms = Object.keys(content) as PlatformKey[];
+    const missingFields = generatedPlatforms.filter((platform) => {
       const value = content?.[platform];
       return typeof value !== "string" || value.trim().length === 0;
     });
