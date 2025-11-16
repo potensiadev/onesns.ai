@@ -4,23 +4,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, Sparkles } from "lucide-react";
 
 interface ContentFormProps {
-  onGenerate: (
-    topic: string,
-    content: string,
-    tone: string,
-    platforms: string[]
-  ) => Promise<void>;
+  onGenerate: (topic: string, content: string, tone: string, platforms: string[]) => Promise<void>;
   isGenerating: boolean;
 }
 
@@ -29,7 +18,7 @@ const PLATFORMS = [
   { id: "instagram", label: "Instagram", color: "platform-instagram" },
   { id: "reddit", label: "Reddit", color: "platform-reddit" },
   { id: "threads", label: "Threads", color: "platform-threads" },
-  { id: "pinterest", label: "Pinterest", color: "platform-pinterest" }
+  { id: "pinterest", label: "Pinterest", color: "platform-pinterest" },
 ];
 
 const TONES = [
@@ -59,11 +48,7 @@ export const ContentForm = ({ onGenerate, isGenerating }: ContentFormProps) => {
       await onGenerate(topic, content, tone, selectedPlatforms);
     } catch (error) {
       console.error("Form submission failed", error);
-      setFormError(
-        error instanceof Error
-          ? error.message
-          : "Failed to generate content. Please try again."
-      );
+      setFormError(error instanceof Error ? error.message : "Failed to generate content. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -71,9 +56,7 @@ export const ContentForm = ({ onGenerate, isGenerating }: ContentFormProps) => {
 
   const togglePlatform = (platformId: string) => {
     setSelectedPlatforms((prev) =>
-      prev.includes(platformId)
-        ? prev.filter((id) => id !== platformId)
-        : [...prev, platformId]
+      prev.includes(platformId) ? prev.filter((id) => id !== platformId) : [...prev, platformId],
     );
   };
 
@@ -82,7 +65,10 @@ export const ContentForm = ({ onGenerate, isGenerating }: ContentFormProps) => {
       <CardContent className="pt-6">
         <form onSubmit={handleGenerate} className="space-y-6" aria-busy={isFormDisabled}>
           {formError && (
-            <div role="alert" className="rounded-lg border border-destructive/50 bg-destructive/5 p-4 text-destructive text-sm">
+            <div
+              role="alert"
+              className="rounded-lg border border-destructive/50 bg-destructive/5 p-4 text-destructive text-sm"
+            >
               {formError}
             </div>
           )}
@@ -102,23 +88,21 @@ export const ContentForm = ({ onGenerate, isGenerating }: ContentFormProps) => {
           <div className="space-y-2">
             <Label htmlFor="content">
               Main Content
-              <span className="text-muted-foreground text-xs ml-2">
-                ({content.length}/3000)
-              </span>
+              <span className="text-muted-foreground text-xs ml-2">({content.length}/10000)</span>
             </Label>
             <Textarea
               id="content"
               placeholder="Describe the key points you want to share..."
               value={content}
               onChange={(e) => {
-                if (e.target.value.length <= 3000) {
+                if (e.target.value.length <= 10000) {
                   setContent(e.target.value);
                 }
               }}
               required
               className="min-h-32 resize-none"
               disabled={isFormDisabled}
-              maxLength={3000}
+              maxLength={10000}
             />
           </div>
 
@@ -150,8 +134,8 @@ export const ContentForm = ({ onGenerate, isGenerating }: ContentFormProps) => {
                   className={`p-3 rounded-lg border-2 transition-all text-center font-medium text-sm ${
                     selectedPlatforms.includes(platform.id)
                       ? `border-${platform.color} bg-${platform.color}/10 shadow-md`
-                      : 'border-border hover:border-muted-foreground/30'
-                  } ${isFormDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:scale-105'}`}
+                      : "border-border hover:border-muted-foreground/30"
+                  } ${isFormDisabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:scale-105"}`}
                 >
                   {platform.label}
                 </button>
