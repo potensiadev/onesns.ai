@@ -20,7 +20,7 @@ const PLATFORMS = [
   { id: "pinterest", label: "Pinterest", color: "platform-pinterest" }
 ];
 
-const MAX_CHARS = 3000; // Backend limit for content
+const MAX_CHARS = 10000; // Backend limit for blog content
 
 export const BlogContentForm = ({ onGenerate, isGenerating }: BlogContentFormProps) => {
   const [blogContent, setBlogContent] = useState("");
