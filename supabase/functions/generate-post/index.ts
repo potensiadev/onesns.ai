@@ -22,7 +22,7 @@ const platformEnum = z.enum(allowedPlatforms);
 const simpleGenerateSchema = z.object({
   type: z.literal("simple"),
   topic: z.string().min(1).max(200),
-  content: z.string().min(1).max(3000),
+  content: z.string().min(1).max(10000),
   tone: z.string().min(1).max(50),
   platforms: z.array(platformEnum).min(1).max(5),
 });
