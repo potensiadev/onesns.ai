@@ -100,15 +100,25 @@ export const ContentForm = ({ onGenerate, isGenerating }: ContentFormProps) => {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="content">Main Content</Label>
+            <Label htmlFor="content">
+              Main Content
+              <span className="text-muted-foreground text-xs ml-2">
+                ({content.length}/3000)
+              </span>
+            </Label>
             <Textarea
               id="content"
               placeholder="Describe the key points you want to share..."
               value={content}
-              onChange={(e) => setContent(e.target.value)}
+              onChange={(e) => {
+                if (e.target.value.length <= 3000) {
+                  setContent(e.target.value);
+                }
+              }}
               required
               className="min-h-32 resize-none"
               disabled={isFormDisabled}
+              maxLength={3000}
             />
           </div>
 
