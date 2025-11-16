@@ -52,7 +52,14 @@ const Auth = () => {
       setIsLoading(true);
 
       const redirectUrl = `${window.location.origin}/`;
-      
+
+      console.log("Attempting signup with:", {
+        email: validated.email,
+        passwordLength: validated.password.length,
+        hasFullName: !!validated.fullName,
+        redirectUrl
+      });
+
       const { error } = await supabase.auth.signUp({
         email: validated.email,
         password: validated.password,
@@ -65,8 +72,13 @@ const Auth = () => {
       });
 
       if (error) {
+        console.error("Signup error details:", error);
         if (error.message.includes("already registered")) {
           toast.error("이미 가입된 이메일입니다. 로그인해주세요.");
+        } else if (error.status === 422) {
+          toast.error(`회원가입 실패: ${error.message || '입력 정보를 확인해주세요'}`, {
+            duration: 6000,
+          });
         } else {
           toast.error(error.message);
         }
