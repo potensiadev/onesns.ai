@@ -2,16 +2,3 @@ project_id = "gsfsidffhnnbwnmxswfu"
 
 [functions.generate-post]
 verify_jwt = true
-
-[functions.encrypt-token]
-verify_jwt = true
-
-[functions.publish-post]
-verify_jwt = true
-
-[functions.social-oauth]
-verify_jwt = true
-
-[functions.token-refresh]
-verify_jwt = false
-schedule = "@daily"

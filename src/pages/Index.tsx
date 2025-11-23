@@ -7,7 +7,6 @@ import { AuthModal } from "@/components/AuthModal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { ensureFreshSession, isAuthError } from "@/integrations/supabase/auth-utils";
 import { FileText, Sparkles } from "lucide-react";
 
 export type GeneratedContent = Record<string, string>;
@@ -39,20 +38,9 @@ const invokeGenerateFunction = async (
 ) => {
   let lastError: any = null;
 
-  // Ensure we have a fresh, non-expired session before making the request
-  let session;
-  try {
-    session = await ensureFreshSession();
-  } catch (error) {
-    if (isAuthError(error)) {
-      if (onAuthRequired) {
-        onAuthRequired();
-      }
-      throw error;
-    }
-    throw error;
-  }
-
+  // Check if user is authenticated
+  const { data: { session } } = await supabase.auth.getSession();
+  
   if (!session) {
     if (onAuthRequired) {
       onAuthRequired();
@@ -60,61 +48,43 @@ const invokeGenerateFunction = async (
     throw new Error("AUTH_REQUIRED");
   }
 
-  console.log("Using fresh auth token, expires at:", new Date(session.expires_at! * 1000).toISOString());
-
   for (const functionName of GENERATE_FUNCTION_CANDIDATES) {
-    let authRetried = false;
-
-    while (true) {
-      const { data, error } = await supabase.functions.invoke<GenerateFunctionResponse>(
-        functionName,
-        {
-          body: payload,
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-        }
-      );
-
-      if (!error) {
-        if (functionName !== GENERATE_FUNCTION_CANDIDATES[0]) {
-          console.warn(`Fell back to legacy ${functionName} edge function`);
-        }
-        return data;
+    const { data, error } = await supabase.functions.invoke<GenerateFunctionResponse>(
+      functionName,
+      {
+        body: payload,
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
       }
+    );
 
-      lastError = error;
-      console.error("Function invocation error:", error);
-
-      const isMissingFunction = error?.status === 404 || /not found/i.test(error?.message || "");
-      if (isMissingFunction) {
-        break;
+    if (!error) {
+      if (functionName !== GENERATE_FUNCTION_CANDIDATES[0]) {
+        console.warn(`Fell back to legacy ${functionName} edge function`);
       }
+      return data;
+    }
 
-      const isUnauthorized =
-        error?.status === 401 || /invalid or expired authentication token/i.test(error?.message || "");
+    lastError = error;
+    console.error("Function invocation error:", error);
 
-      if (isUnauthorized && !authRetried) {
-        console.log("Got 401 error, attempting session refresh and retry...");
-        authRetried = true;
+    const isMissingFunction = error?.status === 404 || /not found/i.test(error?.message || "");
+    if (isMissingFunction) {
+      break;
+    }
 
-        try {
-          session = await ensureFreshSession();
-          console.log("Session refreshed, retrying function invocation...");
-          continue;
-        } catch (refreshError) {
-          console.error("Session refresh failed during retry:", refreshError);
-          if (isAuthError(refreshError)) {
-            if (onAuthRequired) {
-              onAuthRequired();
-            }
-          }
-          throw refreshError;
-        }
+    const isUnauthorized =
+      error?.status === 401 || /invalid or expired authentication token/i.test(error?.message || "");
+
+    if (isUnauthorized) {
+      if (onAuthRequired) {
+        onAuthRequired();
       }
-
       throw error;
     }
+
+    throw error;
   }
 
   throw lastError ?? new Error("Unable to invoke generate post function");
@@ -147,12 +117,6 @@ const Index = () => {
       toast.success("Content generated successfully!");
     } catch (error: any) {
       console.error("Error generating content:", error);
-
-      // Handle auth errors
-      if (isAuthError(error)) {
-        // Auth modal already shown via callback
-        return;
-      }
 
       if (error.status === 429) {
         toast.error("Rate limit exceeded. Please try again in a moment.");
@@ -194,12 +158,6 @@ const Index = () => {
       toast.success("Blog content analyzed and posts generated successfully!");
     } catch (error: any) {
       console.error("Error generating content:", error);
-
-      // Handle auth errors
-      if (isAuthError(error)) {
-        // Auth modal already shown via callback
-        return;
-      }
 
       if (error.status === 429) {
         toast.error("Rate limit exceeded. Please try again in a moment.");
