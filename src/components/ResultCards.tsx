@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { GeneratedContent } from "@/pages/Index";
 import { Badge } from "@/components/ui/badge";
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 
 interface ResultCardsProps {
   content: GeneratedContent;
@@ -46,6 +47,7 @@ const PLATFORM_CONFIG = {
 type PlatformKey = keyof typeof PLATFORM_CONFIG;
 
 export const ResultCards = ({ content }: ResultCardsProps) => {
+  const { t } = useTranslation();
   const [validationError, setValidationError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -67,7 +69,7 @@ export const ResultCards = ({ content }: ResultCardsProps) => {
 
   const copyToClipboard = (text: string, platform: string) => {
     navigator.clipboard.writeText(text);
-    toast.success(`${platform} 게시물이 클립보드에 복사되었습니다!`);
+    toast.success(t('results.copied', { platform }));
   };
 
   if (validationError) {
@@ -76,7 +78,7 @@ export const ResultCards = ({ content }: ResultCardsProps) => {
         role="alert"
         className="rounded-lg border border-destructive/50 bg-destructive/5 p-6 text-destructive"
       >
-        <h2 className="text-xl font-semibold mb-2">게시물을 표시할 수 없습니다</h2>
+        <h2 className="text-xl font-semibold mb-2">{t('results.error')}</h2>
         <p>{validationError}</p>
       </div>
     );
@@ -85,9 +87,9 @@ export const ResultCards = ({ content }: ResultCardsProps) => {
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-12 duration-700">
       <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold mb-2">생성된 게시물</h2>
+        <h2 className="text-3xl font-bold mb-2">{t('results.title')}</h2>
         <p className="text-muted-foreground mb-4">
-          각 플랫폼에 최적화된 게시물이 생성되었습니다
+          {t('results.description')}
         </p>
       </div>
 
@@ -107,7 +109,7 @@ export const ResultCards = ({ content }: ResultCardsProps) => {
                     {config.name}
                   </span>
                   <Badge variant="outline" className="font-normal">
-                    {text.length} chars
+                    {text.length} {t('results.chars')}
                   </Badge>
                 </CardTitle>
               </CardHeader>
@@ -122,7 +124,7 @@ export const ResultCards = ({ content }: ResultCardsProps) => {
                   onClick={() => copyToClipboard(text, config.name)}
                 >
                   <Copy className="w-4 h-4 mr-2" />
-                  복사
+                  {t('results.copy')}
                 </Button>
               </CardContent>
             </Card>

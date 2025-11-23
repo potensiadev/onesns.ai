@@ -1,0 +1,90 @@
+{
+  "hero": {
+    "badge": "AI-Powered Multi-Platform Content",
+    "title1": "Create Posts for 5 Platforms",
+    "title2": "in One Click",
+    "description": "Enter your content once and let AI generate optimized posts for Reddit, Threads, Instagram, Twitter, and Pinterest — each tailored to the platform's unique style.",
+    "login": "Login",
+    "signup": "Sign Up"
+  },
+  "contentForm": {
+    "topic": "Content Topic",
+    "topicPlaceholder": "e.g., Launch of our new AI product",
+    "mainContent": "Main Content",
+    "contentPlaceholder": "Describe the key points you want to share...",
+    "tone": "Tone & Style",
+    "selectPlatforms": "Select Platforms",
+    "generating": "Generating Amazing Content...",
+    "generate": "Generate Posts",
+    "tones": {
+      "professional": "Professional",
+      "casual": "Casual & Friendly",
+      "humorous": "Humorous",
+      "inspirational": "Inspirational",
+      "educational": "Educational"
+    }
+  },
+  "blogForm": {
+    "title": "Transform Blog Content into Social Media Posts",
+    "description": "Paste your blog post and AI will automatically generate optimized posts for each social media platform",
+    "blogContent": "Full Blog Content",
+    "blogPlaceholder": "Paste your entire blog content here. AI will analyze the key points and create posts tailored to each platform...\n\nExample:\nToday we'll explore the new features in React 19.\n\nReact 19 has stabilized Server Components and...\n(full blog content)",
+    "characters": "chars",
+    "overLimit": "⚠️ Content is too long. Please reduce to {max} characters or less for AI processing.",
+    "tip": "💡 Tip: AI automatically summarizes long blogs and adapts them for each platform",
+    "keyMessage": "Emphasize Key Message (Optional)",
+    "keyMessagePlaceholder": "e.g., 30% performance improvement and enhanced developer experience",
+    "keyMessageTip": "Enter any key points you want to emphasize. AI will prioritize these in the generated posts.",
+    "selectPlatforms": "Select Platforms to Post",
+    "generating": "AI is analyzing blog and generating posts...",
+    "generate": "Analyze Blog & Generate Posts"
+  },
+  "results": {
+    "title": "Generated Posts",
+    "description": "Posts optimized for each platform have been generated",
+    "copy": "Copy",
+    "copied": "{platform} post copied to clipboard!",
+    "error": "Unable to display posts",
+    "chars": "chars"
+  },
+  "auth": {
+    "welcome": "Welcome",
+    "description": "Sign in to your account or create a new one",
+    "googleContinue": "Continue with Google",
+    "or": "or",
+    "signin": "Sign In",
+    "signup": "Sign Up",
+    "email": "Email",
+    "emailPlaceholder": "name@example.com",
+    "password": "Password",
+    "name": "Name (Optional)",
+    "namePlaceholder": "John Doe",
+    "signingIn": "Signing in...",
+    "signingUp": "Signing up...",
+    "emailNotConfirmed": "Haven't confirmed your email?",
+    "resendEmail": "Resend Confirmation Email",
+    "errors": {
+      "invalidEmail": "Please enter a valid email address",
+      "passwordMin": "Password must be at least 6 characters",
+      "alreadyRegistered": "This email is already registered. Please sign in.",
+      "invalidCredentials": "Email or password is incorrect. Have you completed email verification after signing up?",
+      "emailNotConfirmedError": "Email verification required. Please check your inbox."
+    },
+    "success": {
+      "signedUp": "Sign up complete! Please check your email to verify your account.",
+      "signedIn": "Successfully signed in!",
+      "emailResent": "Confirmation email has been resent. Please check your inbox."
+    }
+  },
+  "tabs": {
+    "simple": "Simple Input",
+    "blog": "Blog Transform"
+  },
+  "platforms": {
+    "twitter": "Twitter (X)",
+    "instagram": "Instagram",
+    "reddit": "Reddit",
+    "threads": "Threads",
+    "pinterest": "Pinterest"
+  }
+}

@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { FileText, Sparkles } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export type GeneratedContent = Record<string, string>;
 
@@ -91,6 +92,7 @@ const invokeGenerateFunction = async (
 };
 
 const Index = () => {
+  const { t } = useTranslation();
   const [generatedContent, setGeneratedContent] = useState<GeneratedContent | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -182,11 +184,11 @@ const Index = () => {
           <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 mb-8">
             <TabsTrigger value="simple" className="flex items-center gap-2">
               <Sparkles className="h-4 w-4" />
-              간단 입력
+              {t('tabs.simple')}
             </TabsTrigger>
             <TabsTrigger value="blog" className="flex items-center gap-2">
               <FileText className="h-4 w-4" />
-              블로그 변환
+              {t('tabs.blog')}
             </TabsTrigger>
           </TabsList>
 
