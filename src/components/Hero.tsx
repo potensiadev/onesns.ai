@@ -1,4 +1,4 @@
-import { Sparkles, Settings, LogIn, UserPlus, Key } from "lucide-react";
+import { Sparkles, Settings, LogIn, UserPlus } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import UserMenu from "./UserMenu";
@@ -27,12 +27,12 @@ export const Hero = () => {
       <div className="absolute top-4 right-4 flex items-center gap-2">
         {user ? (
           <>
-            <Link to="/tokens">
+            {/* <Link to="/tokens">
               <Button variant="outline" size="sm" className="gap-2">
                 <Key className="w-4 h-4" />
                 토큰 관리
               </Button>
-            </Link>
+            </Link> */}
             <UserMenu />
           </>
         ) : (

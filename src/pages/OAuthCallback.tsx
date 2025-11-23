@@ -56,7 +56,7 @@ const OAuthCallback = () => {
                 setMessage("계정이 성공적으로 연동되었습니다. 페이지로 이동합니다...");
                 toast.success("메타 계정이 연결되었습니다.");
                 sessionStorage.removeItem(`meta-oauth:${provider}`);
-                setTimeout(() => navigate("/tokens"), 1000);
+                setTimeout(() => navigate("/connections"), 1000);
             } catch (err) {
                 console.error(err);
                 setMessage("토큰 교환 중 오류가 발생했습니다. 다시 시도해주세요.");

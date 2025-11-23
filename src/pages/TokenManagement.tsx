@@ -1,3 +1,4 @@
+/* 
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -226,6 +227,14 @@ const TokenManagement = () => {
       )}
     </div>
   );
+};
+
+export default TokenManagement;
+*/
+
+// This page has been commented out - token management features are hidden
+const TokenManagement = () => {
+  return null;
 };
 
 export default TokenManagement;

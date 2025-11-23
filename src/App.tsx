@@ -6,7 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/components/AuthProvider";
 import Index from "@/pages/Index";
 import Connections from "@/pages/Connections";
-import TokenManagement from "@/pages/TokenManagement";
+// import TokenManagement from "@/pages/TokenManagement";
 import Auth from "@/pages/Auth";
 import NotFound from "@/pages/NotFound";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -25,7 +25,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/" element={<Index />} />
             <Route path="/connections" element={<ProtectedRoute><Connections /></ProtectedRoute>} />
-            <Route path="/tokens" element={<ProtectedRoute><TokenManagement /></ProtectedRoute>} />
+            {/* <Route path="/tokens" element={<ProtectedRoute><TokenManagement /></ProtectedRoute>} /> */}
             <Route path="/oauth/meta-callback" element={<ProtectedRoute><OAuthCallback /></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
