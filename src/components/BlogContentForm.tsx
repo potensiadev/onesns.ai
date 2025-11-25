@@ -49,13 +49,15 @@ export const BlogContentForm = ({ onGenerate, isGenerating }: BlogContentFormPro
   };
 
   return (
-    <Card className="shadow-lg mb-12 animate-in fade-in slide-in-from-bottom-10 duration-700 delay-300">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <FileText className="h-5 w-5" />
+    <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300 mb-12 border-0 animate-in fade-in slide-in-from-bottom-10 duration-700 delay-300">
+      <CardHeader className="pb-6">
+        <CardTitle className="flex items-center gap-3 text-2xl font-bold">
+          <div className="p-2 bg-primary/10 rounded-lg">
+            <FileText className="h-6 w-6 text-primary" />
+          </div>
           {t('blogForm.title')}
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="text-base mt-2">
           {t('blogForm.description')}
         </CardDescription>
       </CardHeader>
@@ -82,7 +84,7 @@ export const BlogContentForm = ({ onGenerate, isGenerating }: BlogContentFormPro
               value={blogContent}
               onChange={(e) => setBlogContent(e.target.value)}
               required
-              className="min-h-64 resize-y font-mono text-sm leading-relaxed"
+              className="min-h-64 resize-y text-base leading-relaxed border-2 focus:border-primary rounded-xl"
             />
             {isOverLimit && (
               <p className="text-sm text-red-500">
@@ -101,26 +103,26 @@ export const BlogContentForm = ({ onGenerate, isGenerating }: BlogContentFormPro
               placeholder={t('blogForm.keyMessagePlaceholder')}
               value={keyMessage}
               onChange={(e) => setKeyMessage(e.target.value)}
-              className="h-12"
+              className="h-14 border-2 focus:border-primary rounded-xl text-base"
             />
             <p className="text-xs text-muted-foreground">
               {t('blogForm.keyMessageTip')}
             </p>
           </div>
 
-          <div className="space-y-3">
-            <Label>{t('blogForm.selectPlatforms')}</Label>
+          <div className="space-y-4">
+            <Label className="text-base font-semibold">{t('blogForm.selectPlatforms')}</Label>
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
               {PLATFORMS.map((platform) => (
                 <button
                   key={platform.id}
                   type="button"
                   onClick={() => togglePlatform(platform.id)}
-                  className={`p-3 rounded-lg border-2 transition-all text-center font-medium text-sm ${
+                  className={`p-4 rounded-xl border-2 transition-all duration-200 text-center font-semibold text-sm ${
                     selectedPlatforms.includes(platform.id)
-                      ? `border-${platform.color} bg-${platform.color}/10 shadow-md`
-                      : 'border-border hover:border-muted-foreground/30'
-                  } cursor-pointer hover:scale-105`}
+                      ? `border-primary bg-primary/5 shadow-md scale-105`
+                      : 'border-border hover:border-foreground/20 hover:bg-muted'
+                  } cursor-pointer`}
                 >
                   {platform.label}
                 </button>
@@ -132,16 +134,16 @@ export const BlogContentForm = ({ onGenerate, isGenerating }: BlogContentFormPro
             type="submit"
             size="lg"
             disabled={isGenerating || isOverLimit || !blogContent.trim()}
-            className="w-full h-14 text-lg font-semibold bg-gradient-primary hover:opacity-90 transition-opacity shadow-glow"
+            className="w-full h-16 text-lg font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
           >
             {isGenerating ? (
               <>
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                <Loader2 className="mr-3 h-6 w-6 animate-spin" />
                 {t('blogForm.generating')}
               </>
             ) : (
               <>
-                <Sparkles className="mr-2 h-5 w-5" />
+                <Sparkles className="mr-3 h-6 w-6" />
                 {t('blogForm.generate')}
               </>
             )}

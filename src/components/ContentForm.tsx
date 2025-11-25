@@ -5,8 +5,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, Sparkles } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Loader2, Sparkles, Zap } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 interface ContentFormProps {
@@ -63,34 +63,45 @@ export const ContentForm = ({ onGenerate, isGenerating }: ContentFormProps) => {
   };
 
   return (
-    <Card className="shadow-lg mb-12 animate-in fade-in slide-in-from-bottom-10 duration-700 delay-300">
-      <CardContent className="pt-6">
+    <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300 mb-12 border-0 animate-in fade-in slide-in-from-bottom-10 duration-700 delay-300">
+      <CardHeader className="pb-6">
+        <CardTitle className="flex items-center gap-3 text-2xl font-bold">
+          <div className="p-2 bg-primary/10 rounded-lg">
+            <Zap className="h-6 w-6 text-primary" />
+          </div>
+          {t('contentForm.title')}
+        </CardTitle>
+        <CardDescription className="text-base mt-2">
+          {t('contentForm.description')}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="pt-0">
         <form onSubmit={handleGenerate} className="space-y-6" aria-busy={isFormDisabled}>
           {formError && (
             <div
               role="alert"
-              className="rounded-lg border border-destructive/50 bg-destructive/5 p-4 text-destructive text-sm"
+              className="rounded-xl border-2 border-destructive/50 bg-destructive/5 p-4 text-destructive text-sm font-semibold"
             >
               {formError}
             </div>
           )}
-          <div className="space-y-2">
-            <Label htmlFor="topic">{t('contentForm.topic')}</Label>
+          <div className="space-y-3">
+            <Label htmlFor="topic" className="text-base font-semibold">{t('contentForm.topic')}</Label>
             <Input
               id="topic"
               placeholder={t('contentForm.topicPlaceholder')}
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
               required
-              className="h-12"
+              className="h-14 border-2 focus:border-primary rounded-xl text-base"
               disabled={isFormDisabled}
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="content">
+          <div className="space-y-3">
+            <Label htmlFor="content" className="text-base font-semibold">
               {t('contentForm.mainContent')}
-              <span className="text-muted-foreground text-xs ml-2">({content.length}/10000)</span>
+              <span className="text-muted-foreground text-sm ml-2 font-normal">({content.length}/10000)</span>
             </Label>
             <Textarea
               id="content"
@@ -102,16 +113,16 @@ export const ContentForm = ({ onGenerate, isGenerating }: ContentFormProps) => {
                 }
               }}
               required
-              className="min-h-32 resize-none"
+              className="min-h-40 resize-y text-base leading-relaxed border-2 focus:border-primary rounded-xl"
               disabled={isFormDisabled}
               maxLength={10000}
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="tone">{t('contentForm.tone')}</Label>
+          <div className="space-y-3">
+            <Label htmlFor="tone" className="text-base font-semibold">{t('contentForm.tone')}</Label>
             <Select value={tone} onValueChange={setTone} disabled={isFormDisabled}>
-              <SelectTrigger id="tone" className="h-12">
+              <SelectTrigger id="tone" className="h-14 border-2 focus:border-primary rounded-xl text-base">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -124,8 +135,8 @@ export const ContentForm = ({ onGenerate, isGenerating }: ContentFormProps) => {
             </Select>
           </div>
 
-          <div className="space-y-3">
-            <Label>{t('contentForm.selectPlatforms')}</Label>
+          <div className="space-y-4">
+            <Label className="text-base font-semibold">{t('contentForm.selectPlatforms')}</Label>
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
               {PLATFORMS.map((platform) => (
                 <button
@@ -133,11 +144,11 @@ export const ContentForm = ({ onGenerate, isGenerating }: ContentFormProps) => {
                   type="button"
                   onClick={() => togglePlatform(platform.id)}
                   disabled={isFormDisabled}
-                  className={`p-3 rounded-lg border-2 transition-all text-center font-medium text-sm ${
+                  className={`p-4 rounded-xl border-2 transition-all duration-200 text-center font-semibold text-sm ${
                     selectedPlatforms.includes(platform.id)
-                      ? `border-${platform.color} bg-${platform.color}/10 shadow-md`
-                      : "border-border hover:border-muted-foreground/30"
-                  } ${isFormDisabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:scale-105"}`}
+                      ? `border-primary bg-primary/5 shadow-md scale-105`
+                      : "border-border hover:border-foreground/20 hover:bg-muted"
+                  } ${isFormDisabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
                 >
                   {platform.label}
                 </button>
@@ -149,16 +160,16 @@ export const ContentForm = ({ onGenerate, isGenerating }: ContentFormProps) => {
             type="submit"
             size="lg"
             disabled={isFormDisabled}
-            className="w-full h-14 text-lg font-semibold bg-gradient-primary hover:opacity-90 transition-opacity shadow-glow"
+            className="w-full h-16 text-lg font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
           >
             {isFormDisabled ? (
               <>
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                <Loader2 className="mr-3 h-6 w-6 animate-spin" />
                 {t('contentForm.generating')}
               </>
             ) : (
               <>
-                <Sparkles className="mr-2 h-5 w-5" />
+                <Sparkles className="mr-3 h-6 w-6" />
                 {t('contentForm.generate')}
               </>
             )}

@@ -176,18 +176,18 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-hero">
+    <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         <Hero />
 
-        <Tabs defaultValue="simple" className="w-full mb-8">
-          <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 mb-8">
-            <TabsTrigger value="simple" className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4" />
+        <Tabs defaultValue="simple" className="w-full mb-12">
+          <TabsList className="grid w-full max-w-lg mx-auto grid-cols-2 mb-12 h-14 p-1 bg-muted/50 rounded-xl">
+            <TabsTrigger value="simple" className="flex items-center gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-md font-semibold text-base">
+              <Sparkles className="h-5 w-5" />
               {t('tabs.simple')}
             </TabsTrigger>
-            <TabsTrigger value="blog" className="flex items-center gap-2">
-              <FileText className="h-4 w-4" />
+            <TabsTrigger value="blog" className="flex items-center gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-md font-semibold text-base">
+              <FileText className="h-5 w-5" />
               {t('tabs.blog')}
             </TabsTrigger>
           </TabsList>

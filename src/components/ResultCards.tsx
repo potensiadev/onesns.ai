@@ -85,10 +85,10 @@ export const ResultCards = ({ content }: ResultCardsProps) => {
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-12 duration-700">
-      <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold mb-2">{t('results.title')}</h2>
-        <p className="text-muted-foreground mb-4">
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-12 duration-700">
+      <div className="text-center mb-12">
+        <h2 className="text-4xl md:text-5xl font-bold mb-4">{t('results.title')}</h2>
+        <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
           {t('results.description')}
         </p>
       </div>
@@ -100,27 +100,27 @@ export const ResultCards = ({ content }: ResultCardsProps) => {
           return (
             <Card
               key={platform}
-              className={`shadow-md hover:shadow-lg transition-all duration-300 border-2 ${config.color}`}
+              className="shadow-lg hover:shadow-xl transition-all duration-300 border-0 overflow-hidden group"
             >
-              <CardHeader className={`${config.bgColor}`}>
+              <CardHeader className={`${config.bgColor} pb-4`}>
                 <CardTitle className="flex items-center justify-between">
-                  <span className="flex items-center gap-2">
-                    <span className="text-2xl">{config.icon}</span>
-                    {config.name}
+                  <span className="flex items-center gap-3">
+                    <span className="text-3xl">{config.icon}</span>
+                    <span className="font-bold">{config.name}</span>
                   </span>
-                  <Badge variant="outline" className="font-normal">
+                  <Badge variant="outline" className="font-semibold bg-background/50 backdrop-blur-sm">
                     {text.length} {t('results.chars')}
                   </Badge>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="pt-6">
-                <div className="prose prose-sm max-w-none mb-4">
-                  <p className="whitespace-pre-wrap text-sm leading-relaxed">{text}</p>
+              <CardContent className="pt-6 pb-4">
+                <div className="prose prose-sm max-w-none mb-5 min-h-[120px]">
+                  <p className="whitespace-pre-wrap text-base leading-relaxed text-foreground">{text}</p>
                 </div>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="w-full"
+                  className="w-full group-hover:border-primary group-hover:text-primary transition-colors rounded-lg font-semibold"
                   onClick={() => copyToClipboard(text, config.name)}
                 >
                   <Copy className="w-4 h-4 mr-2" />
