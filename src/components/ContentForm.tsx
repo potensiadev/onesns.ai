@@ -18,19 +18,19 @@ export const ContentForm = ({ onGenerate, isGenerating }: ContentFormProps) => {
   const { t } = useTranslation();
 
   const PLATFORMS = [
-    { id: "twitter", label: t('platforms.twitter'), color: "platform-twitter" },
-    { id: "instagram", label: t('platforms.instagram'), color: "platform-instagram" },
-    { id: "reddit", label: t('platforms.reddit'), color: "platform-reddit" },
-    { id: "threads", label: t('platforms.threads'), color: "platform-threads" },
-    { id: "pinterest", label: t('platforms.pinterest'), color: "platform-pinterest" },
+    { id: "twitter", label: t("platforms.twitter"), color: "platform-twitter" },
+    { id: "instagram", label: t("platforms.instagram"), color: "platform-instagram" },
+    { id: "reddit", label: t("platforms.reddit"), color: "platform-reddit" },
+    { id: "threads", label: t("platforms.threads"), color: "platform-threads" },
+    { id: "pinterest", label: t("platforms.pinterest"), color: "platform-pinterest" },
   ];
 
   const TONES = [
-    { value: "professional", label: t('contentForm.tones.professional') },
-    { value: "casual", label: t('contentForm.tones.casual') },
-    { value: "humorous", label: t('contentForm.tones.humorous') },
-    { value: "inspirational", label: t('contentForm.tones.inspirational') },
-    { value: "educational", label: t('contentForm.tones.educational') },
+    { value: "professional", label: t("contentForm.tones.professional") },
+    { value: "casual", label: t("contentForm.tones.casual") },
+    { value: "humorous", label: t("contentForm.tones.humorous") },
+    { value: "inspirational", label: t("contentForm.tones.inspirational") },
+    { value: "educational", label: t("contentForm.tones.educational") },
   ];
   const [topic, setTopic] = useState("");
   const [content, setContent] = useState("");
@@ -69,11 +69,9 @@ export const ContentForm = ({ onGenerate, isGenerating }: ContentFormProps) => {
           <div className="p-2 bg-primary/10 rounded-lg">
             <Zap className="h-6 w-6 text-primary" />
           </div>
-          {t('contentForm.title')}
+          {t("Idea to SNS Contents")}
         </CardTitle>
-        <CardDescription className="text-base mt-2">
-          {t('contentForm.description')}
-        </CardDescription>
+        <CardDescription className="text-base mt-2">{t("Write any Idea for SNS Contents")}</CardDescription>
       </CardHeader>
       <CardContent className="pt-0">
         <form onSubmit={handleGenerate} className="space-y-6" aria-busy={isFormDisabled}>
@@ -86,10 +84,12 @@ export const ContentForm = ({ onGenerate, isGenerating }: ContentFormProps) => {
             </div>
           )}
           <div className="space-y-3">
-            <Label htmlFor="topic" className="text-base font-semibold">{t('contentForm.topic')}</Label>
+            <Label htmlFor="topic" className="text-base font-semibold">
+              {t("contentForm.topic")}
+            </Label>
             <Input
               id="topic"
-              placeholder={t('contentForm.topicPlaceholder')}
+              placeholder={t("contentForm.topicPlaceholder")}
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
               required
@@ -100,12 +100,12 @@ export const ContentForm = ({ onGenerate, isGenerating }: ContentFormProps) => {
 
           <div className="space-y-3">
             <Label htmlFor="content" className="text-base font-semibold">
-              {t('contentForm.mainContent')}
+              {t("contentForm.mainContent")}
               <span className="text-muted-foreground text-sm ml-2 font-normal">({content.length}/10000)</span>
             </Label>
             <Textarea
               id="content"
-              placeholder={t('contentForm.contentPlaceholder')}
+              placeholder={t("contentForm.contentPlaceholder")}
               value={content}
               onChange={(e) => {
                 if (e.target.value.length <= 10000) {
@@ -120,7 +120,9 @@ export const ContentForm = ({ onGenerate, isGenerating }: ContentFormProps) => {
           </div>
 
           <div className="space-y-3">
-            <Label htmlFor="tone" className="text-base font-semibold">{t('contentForm.tone')}</Label>
+            <Label htmlFor="tone" className="text-base font-semibold">
+              {t("contentForm.tone")}
+            </Label>
             <Select value={tone} onValueChange={setTone} disabled={isFormDisabled}>
               <SelectTrigger id="tone" className="h-14 border-2 focus:border-primary rounded-xl text-base">
                 <SelectValue />
@@ -136,7 +138,7 @@ export const ContentForm = ({ onGenerate, isGenerating }: ContentFormProps) => {
           </div>
 
           <div className="space-y-4">
-            <Label className="text-base font-semibold">{t('contentForm.selectPlatforms')}</Label>
+            <Label className="text-base font-semibold">{t("contentForm.selectPlatforms")}</Label>
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
               {PLATFORMS.map((platform) => (
                 <button
@@ -165,12 +167,12 @@ export const ContentForm = ({ onGenerate, isGenerating }: ContentFormProps) => {
             {isFormDisabled ? (
               <>
                 <Loader2 className="mr-3 h-6 w-6 animate-spin" />
-                {t('contentForm.generating')}
+                {t("contentForm.generating")}
               </>
             ) : (
               <>
                 <Sparkles className="mr-3 h-6 w-6" />
-                {t('contentForm.generate')}
+                {t("contentForm.generate")}
               </>
             )}
           </Button>
