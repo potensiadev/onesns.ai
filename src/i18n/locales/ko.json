@@ -69,6 +69,8 @@
     }
   },
   "contentForm": {
+    "title": "아이디어를 SNS콘텐츠로 만들어요"
+    "description":"어떤 것이든 작성해보세요"
     "topic": "콘텐츠 주제",
     "topicPlaceholder": "예: 새로운 AI 제품 출시",
     "mainContent": "콘텐츠 내용",
