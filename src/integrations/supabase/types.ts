@@ -14,6 +14,86 @@ export type Database = {
   }
   public: {
     Tables: {
+      brand_voices: {
+        Row: {
+          created_at: string
+          extracted_style: Json
+          id: string
+          label: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          extracted_style: Json
+          id?: string
+          label: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          extracted_style?: Json
+          id?: string
+          label?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      generations: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          outputs: Json
+          parent_generation_id: string | null
+          platforms: string[]
+          source: string
+          tone: string | null
+          topic: string | null
+          updated_at: string
+          user_id: string
+          variant_type: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          outputs: Json
+          parent_generation_id?: string | null
+          platforms: string[]
+          source: string
+          tone?: string | null
+          topic?: string | null
+          updated_at?: string
+          user_id: string
+          variant_type?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          outputs?: Json
+          parent_generation_id?: string | null
+          platforms?: string[]
+          source?: string
+          tone?: string | null
+          topic?: string | null
+          updated_at?: string
+          user_id?: string
+          variant_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "generations_parent_generation_id_fkey"
+            columns: ["parent_generation_id"]
+            isOneToOne: false
+            referencedRelation: "generations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -44,6 +124,30 @@ export type Database = {
           limits?: Json | null
           plan?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      usage_events: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          meta: Json | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          meta?: Json | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          meta?: Json | null
+          user_id?: string
         }
         Relationships: []
       }
