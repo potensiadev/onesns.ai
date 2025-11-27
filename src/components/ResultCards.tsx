@@ -3,8 +3,6 @@ import { Button } from "@/components/ui/button";
 import { Copy } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
-import { useState, useEffect } from "react";
-import { useTranslation } from "react-i18next";
 
 export type GeneratedContent = Record<string, string>;
 
@@ -13,119 +11,108 @@ interface ResultCardsProps {
 }
 
 const PLATFORM_CONFIG = {
-  twitter: {
-    name: "Twitter (X)",
-    icon: "🐦",
-    color: "border-platform-twitter",
-    bgColor: "bg-platform-twitter/10",
+  facebook: {
+    name: "Facebook",
+    icon: "📘",
+    color: "border-blue-500",
+    bgColor: "bg-blue-500/10",
   },
   instagram: {
     name: "Instagram",
     icon: "📷",
-    color: "border-platform-instagram",
-    bgColor: "bg-platform-instagram/10",
+    color: "border-pink-500",
+    bgColor: "bg-pink-500/10",
   },
-  reddit: {
-    name: "Reddit",
-    icon: "🤖",
-    color: "border-platform-reddit",
-    bgColor: "bg-platform-reddit/10",
+  linkedin: {
+    name: "LinkedIn",
+    icon: "💼",
+    color: "border-blue-700",
+    bgColor: "bg-blue-700/10",
+  },
+  twitter: {
+    name: "Twitter",
+    icon: "🐦",
+    color: "border-sky-500",
+    bgColor: "bg-sky-500/10",
   },
   threads: {
     name: "Threads",
     icon: "🧵",
-    color: "border-platform-threads",
-    bgColor: "bg-platform-threads/10",
+    color: "border-slate-700",
+    bgColor: "bg-slate-700/10",
   },
-  pinterest: {
-    name: "Pinterest",
-    icon: "📌",
-    color: "border-platform-pinterest",
-    bgColor: "bg-platform-pinterest/10",
+  youtube: {
+    name: "YouTube",
+    icon: "📹",
+    color: "border-red-600",
+    bgColor: "bg-red-600/10",
   },
 } as const;
 
-type PlatformKey = keyof typeof PLATFORM_CONFIG;
-
 export const ResultCards = ({ content }: ResultCardsProps) => {
-  const { t } = useTranslation();
-  const [validationError, setValidationError] = useState<string | null>(null);
-
-  useEffect(() => {
-    // Only validate platforms that are actually in the generated content
-    const generatedPlatforms = Object.keys(content) as PlatformKey[];
-    const missingFields = generatedPlatforms.filter((platform) => {
-      const value = content?.[platform];
-      return typeof value !== "string" || value.trim().length === 0;
-    });
-
-    if (missingFields.length > 0) {
-      const message = `Generated response is missing content for: ${missingFields.join(", ")}`;
-      setValidationError(message);
-      toast.error(message);
-    } else {
-      setValidationError(null);
-    }
-  }, [content]);
-
   const copyToClipboard = (text: string, platform: string) => {
     navigator.clipboard.writeText(text);
-    toast.success(t('results.copied', { platform }));
+    toast.success(`Copied ${platform} content to clipboard!`);
   };
 
-  if (validationError) {
+  const platformEntries = Object.entries(content);
+
+  if (platformEntries.length === 0) {
     return (
-      <div
-        role="alert"
-        className="rounded-lg border border-destructive/50 bg-destructive/5 p-6 text-destructive"
-      >
-        <h2 className="text-xl font-semibold mb-2">{t('results.error')}</h2>
-        <p>{validationError}</p>
+      <div className="text-center p-8 text-muted-foreground">
+        No content generated
       </div>
     );
   }
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-12 duration-700">
-      <div className="text-center mb-12">
-        <h2 className="text-4xl md:text-5xl font-bold mb-4">{t('results.title')}</h2>
-        <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-          {t('results.description')}
+    <div className="space-y-6">
+      <div className="text-center">
+        <h2 className="text-2xl font-bold mb-2">Your Generated Content</h2>
+        <p className="text-muted-foreground">
+          Content optimized for {platformEntries.length} platform{platformEntries.length > 1 ? 's' : ''}
         </p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {Object.entries(content).map(([platform, text]) => {
-          const config = PLATFORM_CONFIG[platform as keyof typeof PLATFORM_CONFIG];
+      <div className="grid gap-4">
+        {platformEntries.map(([platform, text]) => {
+          const config = PLATFORM_CONFIG[platform as keyof typeof PLATFORM_CONFIG] || {
+            name: platform,
+            icon: "📝",
+            color: "border-primary",
+            bgColor: "bg-primary/10",
+          };
 
           return (
             <Card
               key={platform}
-              className="shadow-lg hover:shadow-xl transition-all duration-300 border-0 overflow-hidden group"
+              className={`overflow-hidden transition-all duration-300 hover:shadow-lg ${config.color} border-l-4`}
             >
               <CardHeader className={`${config.bgColor} pb-4`}>
                 <CardTitle className="flex items-center justify-between">
                   <span className="flex items-center gap-3">
-                    <span className="text-3xl">{config.icon}</span>
+                    <span className="text-2xl">{config.icon}</span>
                     <span className="font-bold">{config.name}</span>
                   </span>
-                  <Badge variant="outline" className="font-semibold bg-background/50 backdrop-blur-sm">
-                    {text.length} {t('results.chars')}
+                  <Badge variant="outline" className="font-semibold">
+                    {text.length} chars
                   </Badge>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="pt-6 pb-4">
-                <div className="prose prose-sm max-w-none mb-5 min-h-[120px]">
-                  <p className="whitespace-pre-wrap text-base leading-relaxed text-foreground">{text}</p>
+              <CardContent className="pt-6 space-y-4">
+                <div className="prose prose-sm max-w-none min-h-[100px]">
+                  <p className="whitespace-pre-wrap text-base leading-relaxed">
+                    {text}
+                  </p>
                 </div>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="w-full group-hover:border-primary group-hover:text-primary transition-colors rounded-lg font-semibold"
+                  className="w-full"
                   onClick={() => copyToClipboard(text, config.name)}
                 >
                   <Copy className="w-4 h-4 mr-2" />
-                  {t('results.copy')}
+                  Copy to Clipboard
                 </Button>
               </CardContent>
             </Card>

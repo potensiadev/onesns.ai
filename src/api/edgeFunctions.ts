@@ -29,10 +29,12 @@ export async function callEdgeFunction<T = any>(
 // Typed edge function calls
 export const edgeFunctions = {
   generatePost: (body: {
-    prompt: string;
+    type: 'simple';
+    topic: string;
+    content: string;
+    tone: string;
     platforms: string[];
-    brandVoice?: string;
-    tone?: string;
+    brandVoiceId?: string | null;
   }) => callEdgeFunction('generate-post', body),
   
   generateVariations: (body: {
@@ -42,9 +44,11 @@ export const edgeFunctions = {
   }) => callEdgeFunction('generate-variations', body),
   
   blogToSns: (body: {
+    type: 'blog';
     blogContent: string;
     platforms: string[];
-  }) => callEdgeFunction('blog-to-sns', body),
+    brandVoiceId?: string | null;
+  }) => callEdgeFunction('generate-post', body),
   
   extractBrandVoice: (body: {
     sampleContent: string;
