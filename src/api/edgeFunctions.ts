@@ -54,4 +54,12 @@ export const edgeFunctions = {
     samples: string[];
     title?: string;
   }) => callEdgeFunction('brand-voice-extract', body),
+
+  getGenerations: (body: {
+    limit?: number;
+    offset?: number;
+    types?: string[] | null;
+    from?: string | null;
+    to?: string | null;
+  }) => callEdgeFunction('get-generations', body),
 };
