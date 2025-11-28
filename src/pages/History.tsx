@@ -46,10 +46,10 @@ const TYPE_OPTIONS = [
 ];
 
 export default function History() {
-  const { limits } = useAppStore();
   const [isLoading, setIsLoading] = useState(false);
   const [generations, setGenerations] = useState<Generation[]>([]);
   const [total, setTotal] = useState(0);
+  const [historyLimit, setHistoryLimit] = useState<number | null>(null);
   const [page, setPage] = useState(0);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [dateFrom, setDateFrom] = useState('');
@@ -247,14 +247,22 @@ export default function History() {
           </Card>
         )}
 
-        {/* History Limit Warning */}
-        {historyLimit && total > historyLimit && (
-          <Card className="mb-6 border-amber-500/50 bg-amber-500/5">
+        {/* Pro Upgrade Banner */}
+        {shouldShowUpgrade && (
+          <Card className="mb-6 border-primary/50 bg-primary/5">
             <CardContent className="pt-6">
-              <p className="text-sm text-muted-foreground">
-                Your plan includes access to the last <strong>{historyLimit}</strong> generations.
-                Showing the most recent {Math.min(historyLimit, total)} of {total} total items.
-              </p>
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="font-medium mb-1">Limited History Access</p>
+                  <p className="text-sm text-muted-foreground">
+                    Your plan includes access to the last <strong>{historyLimit}</strong> generations.
+                    If you want unlimited history, upgrade to Pro.
+                  </p>
+                </div>
+                <Button size="sm">
+                  Upgrade to Pro
+                </Button>
+              </div>
             </CardContent>
           </Card>
         )}
@@ -349,6 +357,11 @@ export default function History() {
               <div className="mt-6 flex items-center justify-between">
                 <p className="text-sm text-muted-foreground">
                   Showing {page * limit + 1}-{Math.min((page + 1) * limit, total)} of {total}
+                  {historyLimit && total > historyLimit && (
+                    <span className="ml-1">
+                      (limited to {historyLimit})
+                    </span>
+                  )}
                 </p>
                 <div className="flex gap-2">
                   <Button
