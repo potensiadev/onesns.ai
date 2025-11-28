@@ -4,7 +4,7 @@ import { z } from "https://deno.land/x/zod@v3.23.8/mod.ts";
 import { corsHeaders, jsonError, jsonOk } from "../_shared/errors.ts";
 import { createSupabaseClient, getAuthenticatedUser } from "../_shared/supabaseClient.ts";
 
-const typeEnum = z.enum(["simple", "variation", "blog_to_sns", "brand_voice_extract"]);
+const typeEnum = z.enum(["simple", "variation", "blog"]);
 
 const requestSchema = z.object({
   limit: z.number().int().min(1).max(100).optional(),
@@ -55,11 +55,11 @@ serve(async (req) => {
 
     let query = supabase
       .from("generations")
-      .select("id,type,input,output,platforms,source,created_at", { count: "exact" })
+      .select("id,source,content,outputs,platforms,topic,tone,variant_type,created_at", { count: "exact" })
       .eq("user_id", user.id);
 
     if (payload.types && payload.types.length > 0) {
-      query = query.in("type", payload.types);
+      query = query.in("source", payload.types);
     }
 
     if (payload.from) {
