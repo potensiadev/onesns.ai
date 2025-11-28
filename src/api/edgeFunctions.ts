@@ -38,9 +38,9 @@ export const edgeFunctions = {
   }) => callEdgeFunction('generate-post', body),
   
   generateVariations: (body: {
-    originalContent: string;
-    platform: string;
-    count: number;
+    baseText: string;
+    styles: string[];
+    brandVoiceId?: string | null;
   }) => callEdgeFunction('generate-variations', body),
   
   blogToSns: (body: {

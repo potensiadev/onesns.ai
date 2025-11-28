@@ -6,17 +6,19 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import { PlatformSelector } from '@/components/PlatformSelector';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { useAppStore } from '@/store/useAppStore';
 import { edgeFunctions } from '@/api/edgeFunctions';
 import { toast } from 'sonner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Sparkles, AlertCircle, FileText, Link as LinkIcon } from 'lucide-react';
+import { Sparkles, AlertCircle, FileText, Link as LinkIcon, Copy, CheckCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { GeneratedContent, ResultCards } from '@/components/ResultCards';
 import { Link } from 'react-router-dom';
 import { z } from 'zod';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 // Validation schemas
 const blogContentSchema = z.string()
@@ -26,6 +28,53 @@ const blogContentSchema = z.string()
 const urlSchema = z.string()
   .url('Please enter a valid URL')
   .max(2048, 'URL is too long');
+
+// Variation Card Component
+function VariationCard({ style, text }: { style: string; text: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      toast.success(`${style} variation copied!`);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      toast.error('Failed to copy to clipboard');
+    }
+  };
+
+  const formatStyleLabel = (style: string) => {
+    return style
+      .split('-')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
+  return (
+    <div className="p-4 border rounded-lg space-y-3 bg-card hover:border-primary/50 transition-colors">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="h-2 w-2 rounded-full bg-primary" />
+          <span className="font-medium text-sm">{formatStyleLabel(style)}</span>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleCopy}
+          className="h-8 px-3"
+        >
+          {copied ? (
+            <CheckCircle className="h-4 w-4 text-green-600" />
+          ) : (
+            <Copy className="h-4 w-4" />
+          )}
+        </Button>
+      </div>
+      <p className="text-sm leading-relaxed whitespace-pre-wrap">{text}</p>
+    </div>
+  );
+}
 
 export default function Create() {
   const { brandVoiceAllowed, maxPlatforms, maxBlogLength, dailyUsed, limits, loadDailyUsage } = useAppStore();
@@ -46,6 +95,11 @@ export default function Create() {
   const [blogTone, setBlogTone] = useState('');
   const [blogPlatforms, setBlogPlatforms] = useState<string[]>([]);
   const [blogUseBrandVoice, setBlogUseBrandVoice] = useState(false);
+  
+  // Variations form state
+  const [baseText, setBaseText] = useState('');
+  const [selectedStyles, setSelectedStyles] = useState<string[]>([]);
+  const [variationResults, setVariationResults] = useState<Record<string, string> | null>(null);
   
   // UI state
   const [isLoading, setIsLoading] = useState(false);
@@ -213,9 +267,81 @@ export default function Create() {
     }
   };
 
+  const VARIATION_STYLES = [
+    { id: 'short', label: 'Short', description: 'Concise and to the point' },
+    { id: 'long', label: 'Long', description: 'Detailed and comprehensive' },
+    { id: 'casual', label: 'Casual', description: 'Friendly and conversational' },
+    { id: 'formal', label: 'Formal', description: 'Professional and polished' },
+    { id: 'hook-first', label: 'Hook First', description: 'Attention-grabbing opening' },
+    { id: 'emotional', label: 'Emotional', description: 'Evokes feelings and connection' },
+  ];
+
+  const handleStyleToggle = (styleId: string) => {
+    const variationsLimit = limits.variations_per_request ?? null;
+    
+    if (selectedStyles.includes(styleId)) {
+      setSelectedStyles(selectedStyles.filter(s => s !== styleId));
+    } else {
+      if (variationsLimit !== null && selectedStyles.length >= variationsLimit) {
+        setUpgradeReason(`Your plan allows ${variationsLimit} variation${variationsLimit === 1 ? '' : 's'} per request.`);
+        setShowUpgradeModal(true);
+        return;
+      }
+      setSelectedStyles([...selectedStyles, styleId]);
+    }
+  };
+
+  const handleGenerateVariations = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (isAtDailyLimit) {
+      toast.error('Daily generation limit reached. Upgrade to Pro for unlimited generations!');
+      return;
+    }
+
+    if (!baseText.trim()) {
+      toast.error('Please enter some text to create variations');
+      return;
+    }
+
+    if (selectedStyles.length === 0) {
+      toast.error('Please select at least one style');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setVariationResults(null);
+
+      const { data, error } = await edgeFunctions.generateVariations({
+        baseText: baseText.trim(),
+        styles: selectedStyles,
+        brandVoiceId: null,
+      });
+
+      if (error) {
+        toast.error(error);
+        return;
+      }
+
+      if (data && data.variations) {
+        setVariationResults(data.variations);
+        toast.success(`Generated ${Object.keys(data.variations).length} variation${Object.keys(data.variations).length > 1 ? 's' : ''}!`);
+        
+        await loadDailyUsage();
+      } else {
+        toast.error('Failed to generate variations. Please try again.');
+      }
+    } catch (err) {
+      console.error('Variation generation error:', err);
+      toast.error('An error occurred while generating variations');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleCreateVariations = () => {
     setActiveTab('variations');
-    toast.info('Variations feature coming soon!');
   };
 
   return (
@@ -641,17 +767,158 @@ export default function Create() {
           </TabsContent>
 
           <TabsContent value="variations" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Generate Variations</CardTitle>
-                <CardDescription>
-                  Create multiple versions of your content
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">Feature coming soon...</p>
-              </CardContent>
-            </Card>
+            <div className="grid lg:grid-cols-2 gap-6">
+              {/* Input Form */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Generate Variations</CardTitle>
+                  <CardDescription>
+                    Create multiple styled versions of your content
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handleGenerateVariations} className="space-y-6">
+                    {/* Base Text */}
+                    <div className="space-y-2">
+                      <Label htmlFor="base-text">Original Content</Label>
+                      <Textarea
+                        id="base-text"
+                        placeholder="Enter the text you want to create variations of..."
+                        value={baseText}
+                        onChange={(e) => setBaseText(e.target.value)}
+                        disabled={isLoading}
+                        rows={6}
+                        className="resize-none"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        We'll generate different versions based on the styles you select
+                      </p>
+                    </div>
+
+                    {/* Style Selection */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Label>Select Styles</Label>
+                        {limits.variations_per_request && (
+                          <span className="text-xs text-muted-foreground">
+                            {selectedStyles.length} / {limits.variations_per_request} selected
+                          </span>
+                        )}
+                      </div>
+                      <div className="grid gap-3">
+                        {VARIATION_STYLES.map((style) => (
+                          <div
+                            key={style.id}
+                            className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-accent/50 transition-colors cursor-pointer"
+                            onClick={() => handleStyleToggle(style.id)}
+                          >
+                            <Checkbox
+                              id={style.id}
+                              checked={selectedStyles.includes(style.id)}
+                              onCheckedChange={() => handleStyleToggle(style.id)}
+                              disabled={isLoading}
+                              className="mt-1"
+                            />
+                            <div className="flex-1 space-y-1">
+                              <Label
+                                htmlFor={style.id}
+                                className="text-sm font-medium leading-none cursor-pointer"
+                              >
+                                {style.label}
+                              </Label>
+                              <p className="text-xs text-muted-foreground">
+                                {style.description}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Submit Button */}
+                    <Button
+                      type="submit"
+                      className="w-full"
+                      size="lg"
+                      disabled={isAtDailyLimit || isLoading || !baseText.trim() || selectedStyles.length === 0}
+                    >
+                      {isLoading ? (
+                        <>
+                          <LoadingSpinner size="sm" className="mr-2" />
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="mr-2 h-4 w-4" />
+                          Generate Variations
+                        </>
+                      )}
+                    </Button>
+
+                    {(!baseText.trim() || selectedStyles.length === 0) && !isLoading && (
+                      <p className="text-sm text-muted-foreground text-center">
+                        {isAtDailyLimit 
+                          ? 'Daily limit reached'
+                          : !baseText.trim()
+                          ? 'Enter text to continue'
+                          : 'Select at least one style'}
+                      </p>
+                    )}
+                  </form>
+                </CardContent>
+              </Card>
+
+              {/* Results */}
+              <div>
+                {isLoading && (
+                  <Card className="h-full flex items-center justify-center min-h-[400px]">
+                    <div className="text-center space-y-4">
+                      <LoadingSpinner size="lg" />
+                      <div>
+                        <p className="font-medium">Generating variations...</p>
+                        <p className="text-sm text-muted-foreground">This may take a few moments</p>
+                      </div>
+                    </div>
+                  </Card>
+                )}
+
+                {!isLoading && !variationResults && (
+                  <Card className="h-full flex items-center justify-center min-h-[400px]">
+                    <div className="text-center space-y-4 p-8">
+                      <div className="p-4 bg-primary/10 rounded-full w-fit mx-auto">
+                        <Sparkles className="h-8 w-8 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-lg mb-2">Ready to create?</p>
+                        <p className="text-sm text-muted-foreground max-w-sm">
+                          Enter your content and select styles to generate multiple variations
+                        </p>
+                      </div>
+                    </div>
+                  </Card>
+                )}
+
+                {!isLoading && variationResults && (
+                  <Card className="h-full">
+                    <CardHeader>
+                      <CardTitle className="text-lg">Your Variations</CardTitle>
+                      <CardDescription>
+                        {Object.keys(variationResults).length} version{Object.keys(variationResults).length > 1 ? 's' : ''} generated
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <ScrollArea className="h-[600px] pr-4">
+                        <div className="space-y-4">
+                          {Object.entries(variationResults).map(([style, text]) => (
+                            <VariationCard key={style} style={style} text={text} />
+                          ))}
+                        </div>
+                      </ScrollArea>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            </div>
           </TabsContent>
         </Tabs>
 
