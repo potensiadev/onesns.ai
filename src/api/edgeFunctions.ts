@@ -51,6 +51,7 @@ export const edgeFunctions = {
   }) => callEdgeFunction('generate-post', body),
   
   extractBrandVoice: (body: {
-    sampleContent: string;
+    samples: string[];
+    title?: string;
   }) => callEdgeFunction('brand-voice-extract', body),
 };
