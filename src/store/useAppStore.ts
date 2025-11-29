@@ -16,6 +16,7 @@ export interface LimitsConfig {
 
 export interface BrandVoiceSelection {
   id: string;
+  label?: string;
   voice: {
     tone: string;
     sentenceStyle: string;

@@ -15,7 +15,7 @@ import { toast } from 'sonner';
 import { Sparkles, AlertCircle, FileText, Link as LinkIcon, Copy, CheckCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { GeneratedContent, ResultCards } from '@/components/ResultCards';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { UpgradeToProModal } from '@/components/UpgradeToProModal';
@@ -85,9 +85,11 @@ export default function Create() {
     limits,
     loadDailyUsage,
     brandVoiceSelection,
+    plan,
   } = useAppStore();
-  
+
   const [activeTab, setActiveTab] = useState('create');
+  const navigate = useNavigate();
   
   // Multi-platform form state
   const [topic, setTopic] = useState('');
@@ -118,14 +120,26 @@ export default function Create() {
   const isAtDailyLimit = limits.daily_generations !== null && dailyUsed >= limits.daily_generations;
 
   useEffect(() => {
-    setUseBrandVoice(!!brandVoiceSelection);
-    setBlogUseBrandVoice(!!brandVoiceSelection);
-  }, [brandVoiceSelection]);
+    setUseBrandVoice(brandVoiceAllowed && !!brandVoiceSelection);
+    setBlogUseBrandVoice(brandVoiceAllowed && !!brandVoiceSelection);
+  }, [brandVoiceAllowed, brandVoiceSelection]);
+
+  useEffect(() => {
+    if (blogSourceType === 'text' && maxBlogLength !== null && blogContent.length > maxBlogLength) {
+      setUpgradeReason(
+        `Free users can repurpose up to ${maxBlogLength.toLocaleString()} characters.`
+      );
+      setShowUpgradeModal(true);
+    }
+  }, [blogContent, blogSourceType, maxBlogLength]);
+
   const canGenerate = !isAtDailyLimit && platforms.length > 0 && (topic || content);
 
   const handlePlatformChange = (newPlatforms: string[]) => {
     if (maxPlatforms !== null && newPlatforms.length > maxPlatforms) {
-      setUpgradeReason(`Your plan allows ${maxPlatforms} platform${maxPlatforms === 1 ? '' : 's'} per generation.`);
+      setUpgradeReason(
+        `Free users can generate content for up to ${maxPlatforms} platform${maxPlatforms === 1 ? '' : 's'}.`
+      );
       setShowUpgradeModal(true);
       return;
     }
@@ -134,7 +148,9 @@ export default function Create() {
 
   const handleBlogPlatformChange = (newPlatforms: string[]) => {
     if (maxPlatforms !== null && newPlatforms.length > maxPlatforms) {
-      setUpgradeReason(`Your plan allows ${maxPlatforms} platform${maxPlatforms === 1 ? '' : 's'} per generation.`);
+      setUpgradeReason(
+        `Free users can generate content for up to ${maxPlatforms} platform${maxPlatforms === 1 ? '' : 's'}.`
+      );
       setShowUpgradeModal(true);
       return;
     }
@@ -145,7 +161,8 @@ export default function Create() {
     e.preventDefault();
     
     if (isAtDailyLimit) {
-      toast.error('Daily generation limit reached. Upgrade to Pro for unlimited generations!');
+      setUpgradeReason('You reached your daily generation limit.');
+      setShowUpgradeModal(true);
       return;
     }
 
@@ -164,6 +181,12 @@ export default function Create() {
       return;
     }
 
+    if (useBrandVoice && !brandVoiceAllowed) {
+      setUpgradeReason('Brand Voice is a Pro feature. Activate Pro to enable this toggle.');
+      setShowUpgradeModal(true);
+      return;
+    }
+
     try {
       setIsLoading(true);
       setResults(null);
@@ -174,7 +197,7 @@ export default function Create() {
         content: content || '',
         tone: tone || 'professional',
         platforms,
-        brandVoiceId: useBrandVoice && brandVoiceSelection ? brandVoiceSelection.id : null,
+        brandVoiceId: brandVoiceAllowed && useBrandVoice && brandVoiceSelection ? brandVoiceSelection.id : null,
       });
 
       if (error) {
@@ -182,11 +205,31 @@ export default function Create() {
         return;
       }
 
-      if (data && data.posts) {
-        setResults(data.posts);
+      if (data?.status === 'error') {
+        const code = data.error?.code;
+        if (code === 'QUOTA_EXCEEDED') {
+          setUpgradeReason(data.error?.message || 'You reached your plan limits.');
+          setShowUpgradeModal(true);
+          return;
+        }
+        if (code === 'AUTH_REQUIRED') {
+          navigate('/login');
+          return;
+        }
+        toast.error(data.error?.message || 'Failed to generate content.');
+        return;
+      }
+
+      if (data && (data as any).data?.posts) {
+        const posts = (data as any).data.posts as GeneratedContent;
+        setResults(posts);
         toast.success(`Generated content for ${platforms.length} platform${platforms.length > 1 ? 's' : ''}!`);
-        
+
         // Refresh daily usage
+        await loadDailyUsage();
+      } else if ((data as any)?.posts) {
+        setResults((data as any).posts);
+        toast.success(`Generated content for ${platforms.length} platform${platforms.length > 1 ? 's' : ''}!`);
         await loadDailyUsage();
       } else {
         toast.error('Failed to generate content. Please try again.');
@@ -201,8 +244,7 @@ export default function Create() {
 
   const handleBlogToSns = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Check if feature is allowed
+
     if (!limits.blog_to_sns) {
       setUpgradeReason('Blog-to-SNS is a Pro feature. Upgrade to unlock this capability.');
       setShowUpgradeModal(true);
@@ -210,7 +252,8 @@ export default function Create() {
     }
 
     if (isAtDailyLimit) {
-      toast.error('Daily generation limit reached. Upgrade to Pro for unlimited generations!');
+      setUpgradeReason('You reached your daily generation limit.');
+      setShowUpgradeModal(true);
       return;
     }
 
@@ -247,8 +290,14 @@ export default function Create() {
     // Check blog length limit
     if (maxBlogLength !== null && contentToProcess.length > maxBlogLength) {
       setUpgradeReason(
-        `Your plan allows blog posts up to ${maxBlogLength.toLocaleString()} characters. This post is ${contentToProcess.length.toLocaleString()} characters.`
+        `Free users can repurpose up to ${maxBlogLength.toLocaleString()} characters.`
       );
+      setShowUpgradeModal(true);
+      return;
+    }
+
+    if (blogUseBrandVoice && !brandVoiceAllowed) {
+      setUpgradeReason('Brand Voice is a Pro feature. Activate Pro to enable this toggle.');
       setShowUpgradeModal(true);
       return;
     }
@@ -262,22 +311,43 @@ export default function Create() {
       setIsLoading(true);
       setResults(null);
 
-      const { data, error } = await edgeFunctions.blogToSns({
-        type: 'blog',
-        blogContent: contentToProcess,
-        platforms: blogPlatforms,
-        brandVoiceId: blogUseBrandVoice && brandVoiceSelection ? brandVoiceSelection.id : null,
-      });
+        const { data, error } = await edgeFunctions.blogToSns({
+          type: 'blog',
+          blogContent: contentToProcess,
+          platforms: blogPlatforms,
+          brandVoiceId:
+            brandVoiceAllowed && blogUseBrandVoice && brandVoiceSelection ? brandVoiceSelection.id : null,
+        });
 
       if (error) {
         toast.error(error);
         return;
       }
 
-      if (data && data.posts) {
-        setResults(data.posts);
+      if (data?.status === 'error') {
+        const code = data.error?.code;
+        if (code === 'QUOTA_EXCEEDED') {
+          setUpgradeReason(data.error?.message || 'You reached your plan limits.');
+          setShowUpgradeModal(true);
+          return;
+        }
+        if (code === 'AUTH_REQUIRED') {
+          navigate('/login');
+          return;
+        }
+        toast.error(data.error?.message || 'Failed to generate content.');
+        return;
+      }
+
+      if (data && (data as any).data?.posts) {
+        const posts = (data as any).data.posts as GeneratedContent;
+        setResults(posts);
         toast.success(`Generated content for ${blogPlatforms.length} platform${blogPlatforms.length > 1 ? 's' : ''}!`);
-        
+
+        await loadDailyUsage();
+      } else if ((data as any)?.posts) {
+        setResults((data as any).posts);
+        toast.success(`Generated content for ${blogPlatforms.length} platform${blogPlatforms.length > 1 ? 's' : ''}!`);
         await loadDailyUsage();
       } else {
         toast.error('Failed to generate content. Please try again.');
@@ -301,12 +371,14 @@ export default function Create() {
 
   const handleStyleToggle = (styleId: string) => {
     const variationsLimit = limits.variations_per_request ?? null;
-    
+
     if (selectedStyles.includes(styleId)) {
       setSelectedStyles(selectedStyles.filter(s => s !== styleId));
     } else {
       if (variationsLimit !== null && selectedStyles.length >= variationsLimit) {
-        setUpgradeReason(`Your plan allows ${variationsLimit} variation${variationsLimit === 1 ? '' : 's'} per request.`);
+        setUpgradeReason(
+          `Free users can generate up to ${variationsLimit} variation${variationsLimit === 1 ? '' : 's'} per request.`
+        );
         setShowUpgradeModal(true);
         return;
       }
@@ -316,9 +388,10 @@ export default function Create() {
 
   const handleGenerateVariations = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (isAtDailyLimit) {
-      toast.error('Daily generation limit reached. Upgrade to Pro for unlimited generations!');
+      setUpgradeReason('You reached your daily generation limit.');
+      setShowUpgradeModal(true);
       return;
     }
 
@@ -332,25 +405,51 @@ export default function Create() {
       return;
     }
 
+    if (limits.variations_per_request !== null && selectedStyles.length > limits.variations_per_request) {
+      setUpgradeReason(
+        `Free users can generate up to ${limits.variations_per_request} variation${limits.variations_per_request === 1 ? '' : 's'} per request.`
+      );
+      setShowUpgradeModal(true);
+      return;
+    }
+
     try {
       setIsLoading(true);
       setVariationResults(null);
 
-      const { data, error } = await edgeFunctions.generateVariations({
-        baseText: baseText.trim(),
-        styles: selectedStyles,
-        brandVoiceId: brandVoiceSelection ? brandVoiceSelection.id : null,
-      });
+        const { data, error } = await edgeFunctions.generateVariations({
+          baseText: baseText.trim(),
+          styles: selectedStyles,
+          brandVoiceId: brandVoiceAllowed && brandVoiceSelection ? brandVoiceSelection.id : null,
+        });
 
       if (error) {
         toast.error(error);
         return;
       }
 
-      if (data && data.variations) {
-        setVariationResults(data.variations);
-        toast.success(`Generated ${Object.keys(data.variations).length} variation${Object.keys(data.variations).length > 1 ? 's' : ''}!`);
-        
+      if (data?.status === 'error') {
+        const code = data.error?.code;
+        if (code === 'QUOTA_EXCEEDED') {
+          setUpgradeReason(data.error?.message || 'You reached your plan limits.');
+          setShowUpgradeModal(true);
+          return;
+        }
+        if (code === 'AUTH_REQUIRED') {
+          navigate('/login');
+          return;
+        }
+        toast.error(data.error?.message || 'Failed to generate variations.');
+        return;
+      }
+
+      const variations = (data as any)?.data?.variations || (data as any)?.variations;
+
+      if (variations) {
+        setVariationResults(variations);
+        const variationCount = Object.keys(variations).length;
+        toast.success(`Generated ${variationCount} variation${variationCount > 1 ? 's' : ''}!`);
+
         await loadDailyUsage();
       } else {
         toast.error('Failed to generate variations. Please try again.');
@@ -381,16 +480,16 @@ export default function Create() {
         {limits.daily_generations !== null && (
           <Alert className={`mb-6 ${isAtDailyLimit ? 'border-destructive' : ''}`}>
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription className="flex items-center justify-between">
-              <span>
-                {isAtDailyLimit 
-                  ? `Daily limit reached (${dailyUsed}/${limits.daily_generations}). Upgrade to Pro for unlimited generations!`
-                  : `${dailyUsed}/${limits.daily_generations} generations used today`
+              <AlertDescription className="flex items-center justify-between">
+                <span>
+                  {isAtDailyLimit
+                    ? `Daily limit reached (${dailyUsed}/${limits.daily_generations}). Upgrade to Pro for unlimited generations!`
+                    : `${dailyUsed}/${limits.daily_generations} generations used today`
                 }
               </span>
               {isAtDailyLimit && (
                 <Button size="sm" asChild>
-                  <Link to="/account">Upgrade to Pro</Link>
+                  <Link to="/account#promo">Upgrade to Pro / Enter Promo Code</Link>
                 </Button>
               )}
             </AlertDescription>
@@ -461,8 +560,17 @@ export default function Create() {
                       maxPlatforms={maxPlatforms}
                     />
 
+                    {plan === 'free' && maxPlatforms !== null && (
+                      <p className="text-xs text-muted-foreground -mt-1">
+                        Free plan: up to {maxPlatforms} platforms
+                      </p>
+                    )}
+
                     {/* Brand Voice Toggle */}
-                    <div className={`flex items-center justify-between p-4 border rounded-lg ${!brandVoiceAllowed ? 'opacity-60' : ''}`}>
+                    <div
+                      className={`flex items-center justify-between p-4 border rounded-lg ${!brandVoiceAllowed ? 'opacity-60' : ''}`}
+                      title={!brandVoiceAllowed ? 'Brand Voice is a Pro feature' : undefined}
+                    >
                       <div className="space-y-0.5">
                         <Label htmlFor="brand-voice" className="text-base">
                           Use Brand Voice
@@ -592,7 +700,7 @@ export default function Create() {
                 <AlertDescription className="flex items-center justify-between">
                   <span>Blog-to-SNS is a Pro feature. Upgrade to unlock this capability!</span>
                   <Button size="sm" asChild>
-                    <Link to="/account">Upgrade to Pro</Link>
+                    <Link to="/account#promo">Upgrade to Pro / Enter Promo Code</Link>
                   </Button>
                 </AlertDescription>
               </Alert>
@@ -705,8 +813,17 @@ export default function Create() {
                       maxPlatforms={maxPlatforms}
                     />
 
+                    {plan === 'free' && maxPlatforms !== null && (
+                      <p className="text-xs text-muted-foreground -mt-1">
+                        Free plan: up to {maxPlatforms} platforms
+                      </p>
+                    )}
+
                     {/* Brand Voice Toggle */}
-                    <div className={`flex items-center justify-between p-4 border rounded-lg ${!brandVoiceAllowed ? 'opacity-60' : ''}`}>
+                    <div
+                      className={`flex items-center justify-between p-4 border rounded-lg ${!brandVoiceAllowed ? 'opacity-60' : ''}`}
+                      title={!brandVoiceAllowed ? 'Brand Voice is a Pro feature' : undefined}
+                    >
                       <div className="space-y-0.5">
                         <Label htmlFor="blog-brand-voice" className="text-base">
                           Use Brand Voice
@@ -739,7 +856,7 @@ export default function Create() {
                           }
                           setBlogUseBrandVoice(checked);
                         }}
-                        disabled={isLoading || !brandVoiceAllowed}
+                        disabled={isLoading || !brandVoiceAllowed || !limits.blog_to_sns}
                       />
                     </div>
 
