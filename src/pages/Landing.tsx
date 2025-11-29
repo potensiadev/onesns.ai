@@ -73,9 +73,9 @@ const Landing = () => {
           <h2 className="text-4xl md:text-6xl lg:text-7xl font-extrabold mb-8 leading-tight">
             {t("landing.hero.title.part1")}
             <br />
-            <span className="bg-gradient-primary bg-clip-text text-transparent">{t("landing.hero.title.part2")}</span>
+            {t("landing.hero.title.part2")}
             <br />
-            {t("landing.hero.title.part3")}
+            <span className="bg-gradient-primary bg-clip-text text-transparent">{t("landing.hero.title.part3")}</span>
           </h2>
 
           <p className="text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto mb-12 leading-relaxed">
