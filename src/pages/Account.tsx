@@ -90,7 +90,7 @@ export default function Account() {
         const mapped = (data || []).map((voice) => ({
           id: voice.id,
           label: voice.label,
-          voice: voice.extracted_style as ExtractedVoice,
+          voice: voice.extracted_style as unknown as ExtractedVoice,
         }));
         setBrandVoices(mapped);
       } catch (err) {
