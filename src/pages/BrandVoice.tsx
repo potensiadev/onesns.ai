@@ -245,7 +245,7 @@ export default function BrandVoice() {
                     placeholder="e.g., Professional LinkedIn, Casual Twitter..."
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
-                    disabled={isLoading}
+                    disabled={isLoading || !brandVoiceAllowed}
                     maxLength={50}
                   />
                 </div>
@@ -260,7 +260,7 @@ export default function BrandVoice() {
                         variant="outline"
                         size="sm"
                         onClick={addSample}
-                        disabled={isLoading}
+                        disabled={isLoading || !brandVoiceAllowed}
                       >
                         <Plus className="h-4 w-4 mr-1" />
                         Add Sample
@@ -280,7 +280,7 @@ export default function BrandVoice() {
                             variant="ghost"
                             size="sm"
                             onClick={() => removeSample(index)}
-                            disabled={isLoading}
+                            disabled={isLoading || !brandVoiceAllowed}
                             className="h-6 px-2"
                           >
                             <X className="h-3 w-3" />
@@ -292,7 +292,7 @@ export default function BrandVoice() {
                         placeholder="Paste a sample of your content here (50-2000 characters)..."
                         value={sample}
                         onChange={(e) => updateSample(index, e.target.value)}
-                        disabled={isLoading}
+                        disabled={isLoading || !brandVoiceAllowed}
                         rows={4}
                         className="resize-none text-sm"
                         maxLength={2000}
