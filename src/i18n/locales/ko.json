@@ -46,8 +46,9 @@
       "subtitle": "콘텐츠 제작의 모든 고민을 해결해드립니다",
       "noRewriting": "플랫폼마다 다시 쓸 필요 없음",
       "platformOptimized": "각 플랫폼 특성에 맞춘 자동 최적화",
+      "aiPowered": "최신 AI로 자연스럽게 작성",
       "instantGeneration": "클릭 한 번으로 즉시 생성",
-      "naturalQuality": "자연스러운 퀄리티",
+      "professionalQuality": "전문가급 퀄리티 보장",
       "multilingual": "다국어 지원으로 글로벌 진출",
       "cta": "지금 시작하기"
     },
@@ -56,7 +57,8 @@
       "timeSaved": "주당 절약 시간",
       "hours": "시간/주",
       "quality": "콘텐츠 품질",
-      "natural": "자연스러운"
+      "natural": "자연스러운",
+      "professional": "전문가급"
     },
     "cta": {
       "title": "더이상 콘텐츠 만드는데 시간 쓰지마세요",

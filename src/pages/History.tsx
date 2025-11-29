@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,6 +36,7 @@ interface Generation {
 interface HistoryResponse {
   items: Generation[];
   total: number;
+  history_limit: number | null;
 }
 
 const TYPE_OPTIONS = [
@@ -55,19 +56,24 @@ export default function History() {
   const [dateTo, setDateTo] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [selectedGeneration, setSelectedGeneration] = useState<Generation | null>(null);
+  const [historyData, setHistoryData] = useState<HistoryResponse | null>(null);
+  const [noMoreResults, setNoMoreResults] = useState(false);
 
   const limit = 20;
-  const historyLimit = limits.history_limit ?? null;
+  const historyLimit = historyData?.history_limit ?? limits.history_limit ?? null;
   const maxPages = historyLimit ? Math.ceil(historyLimit / limit) : null;
-  const canLoadMore = maxPages === null || page < maxPages - 1;
+  const loadedItems = Math.min((page + 1) * limit, total);
+  const reachedHistoryLimit = historyLimit !== null && loadedItems >= historyLimit;
+  const canLoadMore =
+    !noMoreResults &&
+    !reachedHistoryLimit &&
+    (maxPages === null || page < maxPages - 1) &&
+    loadedItems < total;
 
-  useEffect(() => {
-    loadGenerations();
-  }, [page, selectedTypes, dateFrom, dateTo]);
-
-  const loadGenerations = async () => {
+  const loadGenerations = useCallback(async () => {
     try {
       setIsLoading(true);
+      setNoMoreResults(false);
 
       const { data, error } = await edgeFunctions.getGenerations({
         limit,
@@ -84,8 +90,12 @@ export default function History() {
 
       if (data) {
         const response = data as HistoryResponse;
+        setHistoryData(response);
         setGenerations(response.items);
         setTotal(response.total);
+        if (response.items.length === 0) {
+          setNoMoreResults(true);
+        }
       }
     } catch (err) {
       console.error('Failed to load history:', err);
@@ -93,7 +103,11 @@ export default function History() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [dateFrom, dateTo, page, selectedTypes]);
+
+  useEffect(() => {
+    loadGenerations();
+  }, [loadGenerations]);
 
   const handleTypeToggle = (typeId: string) => {
     if (selectedTypes.includes(typeId)) {
@@ -102,6 +116,7 @@ export default function History() {
       setSelectedTypes([...selectedTypes, typeId]);
     }
     setPage(0);
+    setNoMoreResults(false);
   };
 
   const handleClearFilters = () => {
@@ -109,6 +124,7 @@ export default function History() {
     setDateFrom('');
     setDateTo('');
     setPage(0);
+    setNoMoreResults(false);
   };
 
   const getTypeLabel = (source: string) => {
@@ -243,6 +259,19 @@ export default function History() {
           </Card>
         )}
 
+        {reachedHistoryLimit && historyLimit !== null && (
+          <Card className="mb-6 border-primary/30 bg-primary/5">
+            <CardContent className="pt-6 space-y-2">
+              <p className="text-sm font-medium">
+                Free plan allows viewing up to {historyLimit} history items.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Upgrade to Pro for unlimited history.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Content */}
         <Card>
           <CardHeader>
@@ -330,18 +359,16 @@ export default function History() {
                   >
                     Previous
                   </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPage(page + 1)}
-                    disabled={
-                      isLoading ||
-                      (page + 1) * limit >= total ||
-                      !canLoadMore
-                    }
-                  >
-                    Next
-                  </Button>
+                  {canLoadMore && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPage(page + 1)}
+                      disabled={isLoading}
+                    >
+                      Next
+                    </Button>
+                  )}
                 </div>
               </div>
             )}

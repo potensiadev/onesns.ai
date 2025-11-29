@@ -53,26 +53,64 @@ serve(async (req) => {
     const limit = payload.limit ?? 20;
     const offset = payload.offset ?? 0;
 
-    let query = supabase
-      .from("generations")
-      .select("id,source,content,outputs,platforms,topic,tone,variant_type,created_at", { count: "exact" })
-      .eq("user_id", user.id);
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("limits")
+      .eq("user_id", user.id)
+      .maybeSingle();
 
-    if (payload.types && payload.types.length > 0) {
-      query = query.in("source", payload.types);
+    if (profileError) {
+      console.error("Failed to load profile", profileError);
+      return jsonError("INTERNAL_ERROR", "Failed to load profile", 500);
     }
 
-    if (payload.from) {
-      query = query.gte("created_at", payload.from);
+    const historyLimit = typeof profile?.limits?.history_limit === "number"
+      ? profile.limits.history_limit
+      : null;
+
+    const applyFilters = (builder: ReturnType<SupabaseClient["from"]>) => {
+      let query = builder.eq("user_id", user.id);
+
+      if (payload.types && payload.types.length > 0) {
+        query = query.in("source", payload.types);
+      }
+
+      if (payload.from) {
+        query = query.gte("created_at", payload.from);
+      }
+
+      if (payload.to) {
+        query = query.lte("created_at", payload.to);
+      }
+
+      return query;
+    };
+
+    const { count, error: countError } = await applyFilters(
+      supabase.from("generations").select("id", { head: true, count: "exact" }),
+    );
+
+    if (countError) {
+      console.error("Failed to count generations", countError);
+      return jsonError("INTERNAL_ERROR", "Failed to fetch generations", 500);
     }
 
-    if (payload.to) {
-      query = query.lte("created_at", payload.to);
+    const totalRecords = count ?? 0;
+    const effectiveTotal = historyLimit !== null ? Math.min(totalRecords, historyLimit) : totalRecords;
+
+    if (historyLimit !== null && offset >= historyLimit) {
+      return jsonOk({ items: [], total: effectiveTotal, history_limit: historyLimit });
     }
 
-    const { data, error, count } = await query
-      .order("created_at", { ascending: false })
-      .range(offset, offset + limit - 1);
+    const rangeStart = offset;
+    const rangeEnd = historyLimit !== null ? Math.min(offset + limit - 1, historyLimit - 1) : offset + limit - 1;
+
+    const { data, error } = await applyFilters(
+      supabase
+        .from("generations")
+        .select("id,source,content,outputs,platforms,topic,tone,variant_type,created_at")
+        .order("created_at", { ascending: false }),
+    ).range(rangeStart, rangeEnd);
 
     if (error) {
       console.error("Failed to fetch generations", error);
@@ -81,7 +119,8 @@ serve(async (req) => {
 
     return jsonOk({
       items: data ?? [],
-      total: count ?? 0,
+      total: effectiveTotal,
+      history_limit: historyLimit,
     });
   } catch (error) {
     console.error("Unhandled error", error);
