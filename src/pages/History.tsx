@@ -49,7 +49,6 @@ export default function History() {
   const [isLoading, setIsLoading] = useState(false);
   const [generations, setGenerations] = useState<Generation[]>([]);
   const [total, setTotal] = useState(0);
-  const [historyLimit, setHistoryLimit] = useState<number | null>(null);
   const [page, setPage] = useState(0);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [dateFrom, setDateFrom] = useState('');
@@ -60,7 +59,7 @@ export default function History() {
   const [noMoreResults, setNoMoreResults] = useState(false);
 
   const limit = 20;
-  const historyLimit = historyData?.history_limit ?? limits.history_limit ?? null;
+  const historyLimit = historyData?.history_limit ?? null;
   const maxPages = historyLimit ? Math.ceil(historyLimit / limit) : null;
   const loadedItems = Math.min((page + 1) * limit, total);
   const reachedHistoryLimit = historyLimit !== null && loadedItems >= historyLimit;
@@ -248,7 +247,7 @@ export default function History() {
         )}
 
         {/* Pro Upgrade Banner */}
-        {shouldShowUpgrade && (
+        {historyLimit !== null && total > historyLimit && (
           <Card className="mb-6 border-primary/50 bg-primary/5">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between gap-4">
@@ -263,58 +262,6 @@ export default function History() {
                   Upgrade to Pro
                 </Button>
               </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {reachedHistoryLimit && historyLimit !== null && (
-          <Card className="mb-6 border-primary/30 bg-primary/5">
-            <CardContent className="pt-6 space-y-2">
-              <p className="text-sm font-medium">
-                Free plan allows viewing up to {historyLimit} history items.
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Upgrade to Pro for unlimited history.
-              </p>
-            </CardContent>
-          </Card>
-        )}
-
-        {reachedHistoryLimit && historyLimit !== null && (
-          <Card className="mb-6 border-primary/30 bg-primary/5">
-            <CardContent className="pt-6 space-y-2">
-              <p className="text-sm font-medium">
-                Free plan allows viewing up to {historyLimit} history items.
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Upgrade to Pro for unlimited history.
-              </p>
-            </CardContent>
-          </Card>
-        )}
-
-        {reachedHistoryLimit && historyLimit !== null && (
-          <Card className="mb-6 border-primary/30 bg-primary/5">
-            <CardContent className="pt-6 space-y-2">
-              <p className="text-sm font-medium">
-                Free plan allows viewing up to {historyLimit} history items.
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Upgrade to Pro for unlimited history.
-              </p>
-            </CardContent>
-          </Card>
-        )}
-
-        {reachedHistoryLimit && historyLimit !== null && (
-          <Card className="mb-6 border-primary/30 bg-primary/5">
-            <CardContent className="pt-6 space-y-2">
-              <p className="text-sm font-medium">
-                Free plan allows viewing up to {historyLimit} history items.
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Upgrade to Pro for unlimited history.
-              </p>
             </CardContent>
           </Card>
         )}
