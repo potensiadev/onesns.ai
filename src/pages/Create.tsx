@@ -115,9 +115,15 @@ export default function Create() {
   const [isLoading, setIsLoading] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [upgradeReason, setUpgradeReason] = useState('');
+  const [upgradeTitle, setUpgradeTitle] = useState('Upgrade to Pro');
   const [results, setResults] = useState<GeneratedContent | null>(null);
 
   const isAtDailyLimit = limits.daily_generations !== null && dailyUsed >= limits.daily_generations;
+  const defaultBrandVoiceId = brandVoiceAllowed && brandVoiceSelection ? brandVoiceSelection.id : null;
+  const platformLimitExceeded = maxPlatforms !== null && platforms.length > maxPlatforms;
+  const blogPlatformLimitExceeded = maxPlatforms !== null && blogPlatforms.length > maxPlatforms;
+  const variationsLimit = limits.variations_per_request ?? null;
+  const variationsLimitExceeded = variationsLimit !== null && selectedStyles.length > variationsLimit;
 
   useEffect(() => {
     setUseBrandVoice(brandVoiceAllowed && !!brandVoiceSelection);
@@ -126,20 +132,18 @@ export default function Create() {
 
   useEffect(() => {
     if (blogSourceType === 'text' && maxBlogLength !== null && blogContent.length > maxBlogLength) {
-      setUpgradeReason(
-        `Free users can repurpose up to ${maxBlogLength.toLocaleString()} characters.`
-      );
+      setUpgradeTitle('Blog Length Limit');
+      setUpgradeReason(`Free users can repurpose up to ${maxBlogLength.toLocaleString()} characters.`);
       setShowUpgradeModal(true);
     }
   }, [blogContent, blogSourceType, maxBlogLength]);
 
-  const canGenerate = !isAtDailyLimit && platforms.length > 0 && (topic || content);
+  const canGenerate = !isAtDailyLimit && !platformLimitExceeded && platforms.length > 0 && (topic || content);
 
   const handlePlatformChange = (newPlatforms: string[]) => {
     if (maxPlatforms !== null && newPlatforms.length > maxPlatforms) {
-      setUpgradeReason(
-        `Free users can generate content for up to ${maxPlatforms} platform${maxPlatforms === 1 ? '' : 's'}.`
-      );
+      setUpgradeTitle('Platform Limit Reached');
+      setUpgradeReason(`Free users can generate content for up to ${maxPlatforms} platform${maxPlatforms === 1 ? '' : 's'}.`);
       setShowUpgradeModal(true);
       return;
     }
@@ -148,20 +152,49 @@ export default function Create() {
 
   const handleBlogPlatformChange = (newPlatforms: string[]) => {
     if (maxPlatforms !== null && newPlatforms.length > maxPlatforms) {
-      setUpgradeReason(
-        `Free users can generate content for up to ${maxPlatforms} platform${maxPlatforms === 1 ? '' : 's'}.`
-      );
+      setUpgradeTitle('Platform Limit Reached');
+      setUpgradeReason(`Free users can generate content for up to ${maxPlatforms} platform${maxPlatforms === 1 ? '' : 's'}.`);
       setShowUpgradeModal(true);
       return;
     }
     setBlogPlatforms(newPlatforms);
   };
 
+  const handleFunctionError = (code?: string, message?: string) => {
+    if (code === 'QUOTA_EXCEEDED') {
+      setUpgradeTitle('Limit Reached');
+      setUpgradeReason(message || 'You reached your plan limits.');
+      setShowUpgradeModal(true);
+      return true;
+    }
+    if (code === 'AUTH_REQUIRED') {
+      navigate('/login');
+      return true;
+    }
+    if (code === 'VALIDATION_ERROR') {
+      toast.error(message || 'Please check your input and try again.');
+      return true;
+    }
+    if (code === 'PROVIDER_ERROR' || code === 'INTERNAL_ERROR') {
+      toast.error(message || 'Failed to generate content. Please try again.');
+      return true;
+    }
+    return false;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (isAtDailyLimit) {
+      setUpgradeTitle('Daily Limit Reached');
       setUpgradeReason('You reached your daily generation limit.');
+      setShowUpgradeModal(true);
+      return;
+    }
+
+    if (platformLimitExceeded) {
+      setUpgradeTitle('Platform Limit Reached');
+      setUpgradeReason(`Free users can generate content for up to ${maxPlatforms} platform${maxPlatforms === 1 ? '' : 's'}.`);
       setShowUpgradeModal(true);
       return;
     }
@@ -182,6 +215,7 @@ export default function Create() {
     }
 
     if (useBrandVoice && !brandVoiceAllowed) {
+      setUpgradeTitle('Brand Voice is a Pro Feature');
       setUpgradeReason('Brand Voice is a Pro feature. Activate Pro to enable this toggle.');
       setShowUpgradeModal(true);
       return;
@@ -197,7 +231,7 @@ export default function Create() {
         content: content || '',
         tone: tone || 'professional',
         platforms,
-        brandVoiceId: brandVoiceAllowed && useBrandVoice && brandVoiceSelection ? brandVoiceSelection.id : null,
+        brandVoiceId: useBrandVoice ? defaultBrandVoiceId : null,
       });
 
       if (error) {
@@ -207,16 +241,7 @@ export default function Create() {
 
       if (data?.status === 'error') {
         const code = data.error?.code;
-        if (code === 'QUOTA_EXCEEDED') {
-          setUpgradeReason(data.error?.message || 'You reached your plan limits.');
-          setShowUpgradeModal(true);
-          return;
-        }
-        if (code === 'AUTH_REQUIRED') {
-          navigate('/login');
-          return;
-        }
-        toast.error(data.error?.message || 'Failed to generate content.');
+        if (handleFunctionError(code, data.error?.message)) return;
         return;
       }
 
@@ -246,13 +271,22 @@ export default function Create() {
     e.preventDefault();
 
     if (!limits.blog_to_sns) {
+      setUpgradeTitle('Pro Feature');
       setUpgradeReason('Blog-to-SNS is a Pro feature. Upgrade to unlock this capability.');
       setShowUpgradeModal(true);
       return;
     }
 
     if (isAtDailyLimit) {
+      setUpgradeTitle('Daily Limit Reached');
       setUpgradeReason('You reached your daily generation limit.');
+      setShowUpgradeModal(true);
+      return;
+    }
+
+    if (blogPlatformLimitExceeded) {
+      setUpgradeTitle('Platform Limit Reached');
+      setUpgradeReason(`Free users can generate content for up to ${maxPlatforms} platform${maxPlatforms === 1 ? '' : 's'}.`);
       setShowUpgradeModal(true);
       return;
     }
@@ -289,14 +323,14 @@ export default function Create() {
 
     // Check blog length limit
     if (maxBlogLength !== null && contentToProcess.length > maxBlogLength) {
-      setUpgradeReason(
-        `Free users can repurpose up to ${maxBlogLength.toLocaleString()} characters.`
-      );
+      setUpgradeTitle('Blog Length Limit');
+      setUpgradeReason(`Free users can repurpose up to ${maxBlogLength.toLocaleString()} characters.`);
       setShowUpgradeModal(true);
       return;
     }
 
     if (blogUseBrandVoice && !brandVoiceAllowed) {
+      setUpgradeTitle('Brand Voice is a Pro Feature');
       setUpgradeReason('Brand Voice is a Pro feature. Activate Pro to enable this toggle.');
       setShowUpgradeModal(true);
       return;
@@ -315,8 +349,7 @@ export default function Create() {
           type: 'blog',
           blogContent: contentToProcess,
           platforms: blogPlatforms,
-          brandVoiceId:
-            brandVoiceAllowed && blogUseBrandVoice && brandVoiceSelection ? brandVoiceSelection.id : null,
+          brandVoiceId: blogUseBrandVoice ? defaultBrandVoiceId : null,
         });
 
       if (error) {
@@ -326,16 +359,7 @@ export default function Create() {
 
       if (data?.status === 'error') {
         const code = data.error?.code;
-        if (code === 'QUOTA_EXCEEDED') {
-          setUpgradeReason(data.error?.message || 'You reached your plan limits.');
-          setShowUpgradeModal(true);
-          return;
-        }
-        if (code === 'AUTH_REQUIRED') {
-          navigate('/login');
-          return;
-        }
-        toast.error(data.error?.message || 'Failed to generate content.');
+        if (handleFunctionError(code, data.error?.message)) return;
         return;
       }
 
@@ -376,9 +400,8 @@ export default function Create() {
       setSelectedStyles(selectedStyles.filter(s => s !== styleId));
     } else {
       if (variationsLimit !== null && selectedStyles.length >= variationsLimit) {
-        setUpgradeReason(
-          `Free users can generate up to ${variationsLimit} variation${variationsLimit === 1 ? '' : 's'} per request.`
-        );
+        setUpgradeTitle('Variation Limit Reached');
+        setUpgradeReason(`Free users can generate up to ${variationsLimit} variation${variationsLimit === 1 ? '' : 's'} per request.`);
         setShowUpgradeModal(true);
         return;
       }
@@ -390,7 +413,17 @@ export default function Create() {
     e.preventDefault();
 
     if (isAtDailyLimit) {
+      setUpgradeTitle('Daily Limit Reached');
       setUpgradeReason('You reached your daily generation limit.');
+      setShowUpgradeModal(true);
+      return;
+    }
+
+    if (variationsLimitExceeded) {
+      setUpgradeTitle('Variation Limit Reached');
+      setUpgradeReason(
+        `Free users can generate up to ${limits.variations_per_request} variation${limits.variations_per_request === 1 ? '' : 's'} per request.`
+      );
       setShowUpgradeModal(true);
       return;
     }
@@ -420,7 +453,7 @@ export default function Create() {
         const { data, error } = await edgeFunctions.generateVariations({
           baseText: baseText.trim(),
           styles: selectedStyles,
-          brandVoiceId: brandVoiceAllowed && brandVoiceSelection ? brandVoiceSelection.id : null,
+          brandVoiceId: brandVoiceAllowed ? defaultBrandVoiceId : null,
         });
 
       if (error) {
@@ -430,16 +463,7 @@ export default function Create() {
 
       if (data?.status === 'error') {
         const code = data.error?.code;
-        if (code === 'QUOTA_EXCEEDED') {
-          setUpgradeReason(data.error?.message || 'You reached your plan limits.');
-          setShowUpgradeModal(true);
-          return;
-        }
-        if (code === 'AUTH_REQUIRED') {
-          navigate('/login');
-          return;
-        }
-        toast.error(data.error?.message || 'Failed to generate variations.');
+        if (handleFunctionError(code, data.error?.message)) return;
         return;
       }
 
@@ -584,6 +608,7 @@ export default function Create() {
                             className="px-0 text-primary"
                             type="button"
                             onClick={() => {
+                              setUpgradeTitle('Brand Voice is a Pro Feature');
                               setUpgradeReason('Brand Voice is a Pro feature. Activate Pro to enable this toggle.');
                               setShowUpgradeModal(true);
                             }}
@@ -597,6 +622,7 @@ export default function Create() {
                         checked={useBrandVoice}
                         onCheckedChange={(checked) => {
                           if (!brandVoiceAllowed) {
+                            setUpgradeTitle('Brand Voice is a Pro Feature');
                             setUpgradeReason('Brand Voice is a Pro feature. Activate Pro to enable this toggle.');
                             setShowUpgradeModal(true);
                             return;
@@ -837,6 +863,7 @@ export default function Create() {
                             className="px-0 text-primary"
                             type="button"
                             onClick={() => {
+                              setUpgradeTitle('Brand Voice is a Pro Feature');
                               setUpgradeReason('Brand Voice is a Pro feature. Activate Pro to enable this toggle.');
                               setShowUpgradeModal(true);
                             }}
@@ -850,6 +877,7 @@ export default function Create() {
                         checked={blogUseBrandVoice}
                         onCheckedChange={(checked) => {
                           if (!brandVoiceAllowed) {
+                            setUpgradeTitle('Brand Voice is a Pro Feature');
                             setUpgradeReason('Brand Voice is a Pro feature. Activate Pro to enable this toggle.');
                             setShowUpgradeModal(true);
                             return;
@@ -872,7 +900,8 @@ export default function Create() {
                         blogPlatforms.length === 0 ||
                         (blogSourceType === 'text' && !blogContent) ||
                         (blogSourceType === 'url' && !blogUrl) ||
-                        (maxBlogLength !== null && blogContent.length > maxBlogLength)
+                        (maxBlogLength !== null && blogContent.length > maxBlogLength) ||
+                        blogPlatformLimitExceeded
                       }
                     >
                       {isLoading ? (
@@ -1016,7 +1045,13 @@ export default function Create() {
                       type="submit"
                       className="w-full"
                       size="lg"
-                      disabled={isAtDailyLimit || isLoading || !baseText.trim() || selectedStyles.length === 0}
+                      disabled={
+                        isAtDailyLimit ||
+                        isLoading ||
+                        !baseText.trim() ||
+                        selectedStyles.length === 0 ||
+                        variationsLimitExceeded
+                      }
                     >
                       {isLoading ? (
                         <>
@@ -1101,6 +1136,7 @@ export default function Create() {
         <UpgradeToProModal
           open={showUpgradeModal}
           onOpenChange={setShowUpgradeModal}
+          title={upgradeTitle}
           reason={upgradeReason}
         />
       </div>

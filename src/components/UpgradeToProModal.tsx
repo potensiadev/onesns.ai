@@ -7,16 +7,17 @@ interface UpgradeToProModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   reason?: ReactNode;
+  title?: string;
 }
 
-export function UpgradeToProModal({ open, onOpenChange, reason }: UpgradeToProModalProps) {
+export function UpgradeToProModal({ open, onOpenChange, reason, title }: UpgradeToProModalProps) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
-            Upgrade to Pro
+            {title || 'Upgrade to Pro'}
           </AlertDialogTitle>
           <AlertDialogDescription className="space-y-4 pt-4">
             <p>{reason || 'Upgrade to unlock this feature.'}</p>
@@ -29,9 +30,6 @@ export function UpgradeToProModal({ open, onOpenChange, reason }: UpgradeToProMo
           <AlertDialogCancel className="w-full sm:w-auto">Close</AlertDialogCancel>
           <AlertDialogAction asChild className="w-full sm:w-auto">
             <Link to="/account#promo">Enter Promo Code</Link>
-          </AlertDialogAction>
-          <AlertDialogAction asChild className="w-full sm:w-auto">
-            <Link to="/account">Go to Account Page</Link>
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
