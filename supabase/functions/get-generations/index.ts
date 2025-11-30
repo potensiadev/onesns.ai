@@ -56,7 +56,7 @@ serve(async (req) => {
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("limits")
-      .eq("user_id", user.id)
+      .eq("id", user.id)
       .maybeSingle();
 
     if (profileError) {
@@ -68,27 +68,25 @@ serve(async (req) => {
       ? profile.limits.history_limit
       : null;
 
-    const applyFilters = (builder: ReturnType<SupabaseClient["from"]>) => {
-      let query = builder.eq("user_id", user.id);
+    // Build count query
+    let countQuery = supabase
+      .from("generations")
+      .select("id", { head: true, count: "exact" })
+      .eq("user_id", user.id);
 
-      if (payload.types && payload.types.length > 0) {
-        query = query.in("source", payload.types);
-      }
+    if (payload.types && payload.types.length > 0) {
+      countQuery = countQuery.in("source", payload.types);
+    }
 
-      if (payload.from) {
-        query = query.gte("created_at", payload.from);
-      }
+    if (payload.from) {
+      countQuery = countQuery.gte("created_at", payload.from);
+    }
 
-      if (payload.to) {
-        query = query.lte("created_at", payload.to);
-      }
+    if (payload.to) {
+      countQuery = countQuery.lte("created_at", payload.to);
+    }
 
-      return query;
-    };
-
-    const { count, error: countError } = await applyFilters(
-      supabase.from("generations").select("id", { head: true, count: "exact" }),
-    );
+    const { count, error: countError } = await countQuery;
 
     if (countError) {
       console.error("Failed to count generations", countError);
@@ -105,12 +103,27 @@ serve(async (req) => {
     const rangeStart = offset;
     const rangeEnd = historyLimit !== null ? Math.min(offset + limit - 1, historyLimit - 1) : offset + limit - 1;
 
-    const { data, error } = await applyFilters(
-      supabase
-        .from("generations")
-        .select("id,source,content,outputs,platforms,topic,tone,variant_type,created_at")
-        .order("created_at", { ascending: false }),
-    ).range(rangeStart, rangeEnd);
+    // Build data query
+    let dataQuery = supabase
+      .from("generations")
+      .select("id,source,content,outputs,platforms,topic,tone,variant_type,created_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .range(rangeStart, rangeEnd);
+
+    if (payload.types && payload.types.length > 0) {
+      dataQuery = dataQuery.in("source", payload.types);
+    }
+
+    if (payload.from) {
+      dataQuery = dataQuery.gte("created_at", payload.from);
+    }
+
+    if (payload.to) {
+      dataQuery = dataQuery.lte("created_at", payload.to);
+    }
+
+    const { data, error } = await dataQuery;
 
     if (error) {
       console.error("Failed to fetch generations", error);
