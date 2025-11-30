@@ -6,6 +6,17 @@ export type Platform = typeof allowedPlatforms[number];
 
 export const platformEnum = z.enum(allowedPlatforms);
 
+export const platformModelMap: Record<string, { provider: "anthropic" | "openai" | "google"; model: string }> = {
+  twitter: { provider: "anthropic", model: "claude-3.5-sonnet" },
+  x: { provider: "anthropic", model: "claude-3.5-sonnet" },
+  threads: { provider: "openai", model: "gpt-4.1" },
+  instagram: { provider: "google", model: "gemini-2.5-flash" },
+  linkedin: { provider: "openai", model: "gpt-5-mini" },
+  tiktok: { provider: "anthropic", model: "claude-3-haiku" },
+  youtube: { provider: "google", model: "gemini-3-pro" },
+  reddit: { provider: "openai", model: "gpt-4o-mini" },
+};
+
 export const platformRules: Record<Platform, string> = {
   twitter: "- Max 280 characters.\n- Punchy, direct.\n- 1-2 relevant hashtags.\n- Optional subtle CTA or question.",
   instagram:

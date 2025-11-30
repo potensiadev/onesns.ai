@@ -100,7 +100,7 @@ serve(async (req) => {
       const prompt = variationPromptBuilder({ baseText: payload.baseText, style, brandVoice });
       let aiResult;
       try {
-        aiResult = await aiRouter(prompt);
+        aiResult = await aiRouter(prompt, "primary", null);
       } catch (error) {
         console.error("AI provider error", error);
         return jsonError(

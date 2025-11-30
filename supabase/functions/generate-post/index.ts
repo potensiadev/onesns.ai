@@ -128,37 +128,42 @@ serve(async (req) => {
       return jsonError("INTERNAL_ERROR", "Failed to load brand voice", 500);
     }
 
-    const rules = payload.platforms.reduce((acc, platform) => {
-      acc[platform] = platformRules[platform];
-      return acc;
-    }, {} as Record<Platform, string>);
+    const posts: Record<Platform, string> = {} as Record<Platform, string>;
 
-    const prompt = promptBuilder({ request: payload, platformRules: rules, brandVoice });
+    for (const platform of payload.platforms) {
+      const singlePlatformRules = { [platform]: platformRules[platform] } as Record<Platform, string>;
+      const singleRequest: RequestShape =
+        payload.type === "simple"
+          ? { ...payload, platforms: [platform] }
+          : { type: "blog", blogContent: payload.blogContent, platforms: [platform], brandVoiceId: payload.brandVoiceId ?? null };
 
-    let aiResult;
-    try {
-      aiResult = await aiRouter(prompt);
-    } catch (error) {
-      console.error("AI provider error", error);
-      return jsonError(
-        "PROVIDER_ERROR",
-        "All AI providers failed",
-        502,
-        error instanceof Error ? error.message : String(error),
-      );
-    }
+      const prompt = promptBuilder({ request: singleRequest, platformRules: singlePlatformRules, brandVoice });
 
-    let posts: Record<Platform, string>;
-    try {
-      posts = parsePosts(aiResult.content, payload.platforms);
-    } catch (error) {
-      console.error(error);
-      return jsonError(
-        "PROVIDER_ERROR",
-        "AI response could not be parsed",
-        502,
-        error instanceof Error ? error.message : String(error),
-      );
+      let aiResult;
+      try {
+        aiResult = await aiRouter(prompt, "primary", platform);
+      } catch (error) {
+        console.error("AI provider error", error);
+        return jsonError(
+          "PROVIDER_ERROR",
+          "All AI providers failed",
+          502,
+          error instanceof Error ? error.message : String(error),
+        );
+      }
+
+      try {
+        const parsed = parsePosts(aiResult.content, [platform]);
+        posts[platform] = parsed[platform]!;
+      } catch (error) {
+        console.error(error);
+        return jsonError(
+          "PROVIDER_ERROR",
+          "AI response could not be parsed",
+          502,
+          error instanceof Error ? error.message : String(error),
+        );
+      }
     }
 
     const insertPayload = {
