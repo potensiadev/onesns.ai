@@ -1,7 +1,7 @@
 {
   "hero": {
     "title1": "클릭 한 번으로",
-    "title2": "5개 SNS콘텐츠 자동 생성",
+    "title2": "6개 SNS콘텐츠 자동 생성",
     "description": "콘텐츠를 한 번만 입력하면 AI가 Reddit, Threads, Instagram, Twitter, Pinterest에 최적화된 게시물을 자동으로 생성합니다.",
     "login": "로그인",
     "signup": "회원가입"
@@ -14,7 +14,7 @@
     "hero": {
       "title": {
         "part1": "1번 클릭으로",
-        "part2": "5개 SNS콘텐츠 동시 생성"
+        "part2": "6개 SNS콘텐츠 동시 생성"
       },
       "subtitle": "블로그 글이나 아이디어만 입력하세요. 최적화된 콘텐츠가 자동 생성됩니다",
       "cta": "무료로 시작하기",
@@ -29,7 +29,7 @@
       "title": "왜 OneSNS.ai를 선택해야 할까요?",
       "subtitle": "콘텐츠 마케터와 크리에이터를 위한 완벽한 솔루션",
       "multiPlatform": {
-        "title": "5개 SNS콘텐츠 동시 생성",
+        "title": "6개 SNS콘텐츠 동시 생성",
         "description": "Reddit, Threads, Instagram, Twitter, Pinterest - 각 플랫폼의 특성에 맞춰 최적화된 콘텐츠를 한 번에 생성합니다"
       },
       "optimized": {

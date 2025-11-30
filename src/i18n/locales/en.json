@@ -13,10 +13,10 @@
       "getStarted": "Get Started"
     },
     "hero": {
-      "badge": "AI-Powered Content Generation",
       "title": {
-        "part1": "Create Contents for 5 Platforms",
-        "part2": "with One Click"
+        "part1": "Create Contents",
+        "part2": "for 6 SNS Channels",
+        "part3": "with One Click"
       },
       "subtitle": "Enter your blog post or idea, and AI will automatically generate platform-optimized content for each social media",
       "cta": "Start for Free",

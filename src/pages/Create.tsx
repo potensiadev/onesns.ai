@@ -438,6 +438,14 @@ export default function Create() {
       return;
     }
 
+    if (limits.variations_per_request !== null && selectedStyles.length > limits.variations_per_request) {
+      setUpgradeReason(
+        `Free users can generate up to ${limits.variations_per_request} variation${limits.variations_per_request === 1 ? '' : 's'} per request.`
+      );
+      setShowUpgradeModal(true);
+      return;
+    }
+
     try {
       setIsLoading(true);
       setVariationResults(null);
