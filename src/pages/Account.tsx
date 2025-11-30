@@ -78,7 +78,7 @@ export default function Account() {
         setLoadingVoices(true);
         const { data, error } = await supabase
           .from('brand_voices')
-          .select('id, title, voice_json')
+          .select('id, label, extracted_style')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false });
 
@@ -91,8 +91,8 @@ export default function Account() {
 
         const mapped = (data || []).map((voice) => ({
           id: voice.id,
-          title: voice.title,
-          voice: (voice as any).voice_json as ExtractedVoice,
+          title: voice.label,
+          voice: voice.extracted_style as unknown as ExtractedVoice,
         }));
         setBrandVoices(mapped);
       } catch (err) {
@@ -192,162 +192,6 @@ export default function Account() {
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     navigate('/login');
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingSpinner />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return null;
-  }
-
-  useEffect(() => {
-    if (user?.id) {
-      setAdminUserId(user.id);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    if (!user) return;
-    loadProfileAndLimits();
-    loadDailyUsage();
-  }, [user, loadDailyUsage, loadProfileAndLimits]);
-
-  useEffect(() => {
-    if (!user) {
-      navigate('/auth');
-      return;
-    }
-
-    if (!limits?.brand_voice) {
-      setBrandVoices([]);
-      return;
-    }
-
-    const fetchVoices = async () => {
-      try {
-        setLoadingVoices(true);
-        const { data, error } = await supabase
-          .from('brand_voices')
-          .select('id, label, extracted_style')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
-
-        if (error) {
-          console.error('Error loading brand voices', error);
-          toast.error('브랜드 보이스를 불러오지 못했어요.');
-          setBrandVoices([]);
-          return;
-        }
-
-        const mapped = (data || []).map((voice) => ({
-          id: voice.id,
-          label: voice.label,
-          voice: voice.extracted_style as ExtractedVoice,
-        }));
-        setBrandVoices(mapped);
-      } catch (err) {
-        console.error('Brand voice fetch error', err);
-        toast.error('브랜드 보이스를 불러오지 못했어요.');
-      } finally {
-        setLoadingVoices(false);
-      }
-    };
-
-    fetchVoices();
-  }, [user, limits?.brand_voice, navigate]);
-
-  const handleActivatePromo = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!promoCode.trim()) {
-      toast.error('Please enter a promo code');
-      return;
-    }
-
-    try {
-      setIsSubmitting(true);
-      const { error } = await edgeFunctions.activatePromo({ code: promoCode.trim() });
-
-      if (error) {
-        toast.error(error);
-        return;
-      }
-
-      toast.success('Pro activated successfully!');
-      setPromoCode('');
-      await loadProfileAndLimits();
-      await loadDailyUsage();
-    } catch (err) {
-      console.error('Promo activation error', err);
-      toast.error('Failed to activate promo code');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleAdminUpgrade = async () => {
-    const targetUserId = adminUserId.trim() || user?.id;
-
-    if (!targetUserId) {
-      toast.error('User ID is required');
-      return;
-    }
-
-    if (!import.meta.env.VITE_ADMIN_UPGRADE_SECRET) {
-      toast.error('Admin secret not configured');
-      return;
-    }
-
-    try {
-      setIsAdminActivating(true);
-      const { error } = await edgeFunctions.adminUpgradeUser({
-        userId: targetUserId,
-        plan: adminPlan,
-      });
-
-      if (error) {
-        toast.error(error);
-        return;
-      }
-
-      toast.success('User plan updated');
-      await loadProfileAndLimits();
-      await loadDailyUsage();
-    } catch (err) {
-      console.error('Admin upgrade error', err);
-      toast.error('Failed to request activation');
-    } finally {
-      setIsAdminActivating(false);
-    }
-  };
-
-  const limitsDisplay = useMemo(() => ({
-    daily_generations: limits?.daily_generations ?? 'Unlimited',
-    max_platforms_per_request: limits?.max_platforms_per_request ?? 'Unlimited',
-    max_blog_length: limits?.max_blog_length ?? 'Unlimited',
-    variations_per_request: limits?.variations_per_request ?? 'Unlimited',
-    brand_voice: limits?.brand_voice ? 'Enabled' : 'Disabled',
-    history_limit: limits?.history_limit ?? 'Unlimited',
-    priority_routing: limits?.priority_routing ? 'Enabled' : 'Disabled',
-  }), [limits]);
-
-  const handleSelectBrandVoice = (voiceId: string) => {
-    const selected = brandVoices.find((v) => v.id === voiceId);
-    if (selected) {
-      setBrandVoice({ id: selected.id, label: selected.label, voice: selected.voice });
-      toast.success('Default brand voice updated');
-    }
-  };
-
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    navigate('/auth');
   };
 
   if (loading) {

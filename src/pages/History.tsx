@@ -59,7 +59,7 @@ export default function History() {
   const [noMoreResults, setNoMoreResults] = useState(false);
 
   const limit = 20;
-  const historyLimit = historyData?.history_limit ?? limits.history_limit ?? null;
+  const historyLimit = historyData?.history_limit ?? null;
   const maxPages = historyLimit ? Math.ceil(historyLimit / limit) : null;
   const loadedItems = Math.min((page + 1) * limit, total);
   const reachedHistoryLimit = historyLimit !== null && loadedItems >= historyLimit;
