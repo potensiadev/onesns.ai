@@ -292,6 +292,19 @@ export default function History() {
           </Card>
         )}
 
+        {reachedHistoryLimit && historyLimit !== null && (
+          <Card className="mb-6 border-primary/30 bg-primary/5">
+            <CardContent className="pt-6 space-y-2">
+              <p className="text-sm font-medium">
+                Free plan allows viewing up to {historyLimit} history items.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Upgrade to Pro for unlimited history.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Content */}
         <Card>
           <CardHeader>

@@ -43,10 +43,168 @@ export default function Account() {
   const [adminUserId, setAdminUserId] = useState('');
   const [adminPlan, setAdminPlan] = useState<'pro' | 'free'>('pro');
   const [adminOpen, setAdminOpen] = useState(false);
-  const [brandVoices, setBrandVoices] = useState<{ id: string; label?: string; voice: ExtractedVoice }[]>([]);
+  const [brandVoices, setBrandVoices] = useState<{ id: string; title?: string; voice: ExtractedVoice }[]>([]);
   const [loadingVoices, setLoadingVoices] = useState(false);
 
   const isPro = plan === 'pro';
+  const defaultBrandVoiceId = brandVoiceSelection?.id || '';
+  const adminEnabled = Boolean(import.meta.env.VITE_ADMIN_UPGRADE_SECRET);
+
+  useEffect(() => {
+    if (user?.id) {
+      setAdminUserId(user.id);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    loadProfileAndLimits();
+    loadDailyUsage();
+  }, [user, loadDailyUsage, loadProfileAndLimits]);
+
+  useEffect(() => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+
+    if (!limits?.brand_voice) {
+      setBrandVoices([]);
+      return;
+    }
+
+    const fetchVoices = async () => {
+      try {
+        setLoadingVoices(true);
+        const { data, error } = await supabase
+          .from('brand_voices')
+          .select('id, title, voice_json')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('Error loading brand voices', error);
+          toast.error('브랜드 보이스를 불러오지 못했어요.');
+          setBrandVoices([]);
+          return;
+        }
+
+        const mapped = (data || []).map((voice) => ({
+          id: voice.id,
+          title: voice.title,
+          voice: (voice as any).voice_json as ExtractedVoice,
+        }));
+        setBrandVoices(mapped);
+      } catch (err) {
+        console.error('Brand voice fetch error', err);
+        toast.error('브랜드 보이스를 불러오지 못했어요.');
+      } finally {
+        setLoadingVoices(false);
+      }
+    };
+
+    fetchVoices();
+  }, [user, limits?.brand_voice, navigate]);
+
+  const handleActivatePromo = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!promoCode.trim()) {
+      toast.error('Please enter a promo code');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      const { error } = await edgeFunctions.activatePromo({ code: promoCode.trim() });
+
+      if (error) {
+        toast.error(error);
+        return;
+      }
+
+      toast.success('Pro activated successfully!');
+      setPromoCode('');
+      await loadProfileAndLimits();
+      await loadDailyUsage();
+    } catch (err) {
+      console.error('Promo activation error', err);
+      toast.error('Failed to activate promo code');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleAdminUpgrade = async () => {
+    const targetUserId = adminUserId.trim() || user?.id;
+
+    if (!targetUserId) {
+      toast.error('User ID is required');
+      return;
+    }
+
+    if (!import.meta.env.VITE_ADMIN_UPGRADE_SECRET) {
+      toast.error('Admin secret not configured');
+      return;
+    }
+
+    try {
+      setIsAdminActivating(true);
+      const { error } = await edgeFunctions.adminUpgradeUser({
+        userId: targetUserId,
+        plan: adminPlan,
+      });
+
+      if (error) {
+        toast.error(error);
+        return;
+      }
+
+      toast.success('User plan updated');
+      await loadProfileAndLimits();
+      await loadDailyUsage();
+    } catch (err) {
+      console.error('Admin upgrade error', err);
+      toast.error('Failed to request activation');
+    } finally {
+      setIsAdminActivating(false);
+    }
+  };
+
+  const limitsDisplay = useMemo(() => ({
+    daily_generations: limits?.daily_generations ?? 'Unlimited',
+    max_platforms_per_request: limits?.max_platforms_per_request ?? 'Unlimited',
+    max_blog_length: limits?.max_blog_length ?? 'Unlimited',
+    variations_per_request: limits?.variations_per_request ?? 'Unlimited',
+    brand_voice: limits?.brand_voice ? 'Enabled' : 'Disabled',
+    history_limit: limits?.history_limit ?? 'Unlimited',
+    priority_routing: limits?.priority_routing ? 'Enabled' : 'Disabled',
+  }), [limits]);
+
+  const handleSelectBrandVoice = (voiceId: string) => {
+    const selected = brandVoices.find((v) => v.id === voiceId);
+    if (selected) {
+      setBrandVoice({ id: selected.id, label: selected.title, voice: selected.voice });
+      toast.success('Default brand voice saved');
+    }
+  };
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    navigate('/login');
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingSpinner />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
 
   useEffect(() => {
     if (user?.id) {
@@ -223,16 +381,23 @@ export default function Account() {
             </Badge>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
               <div>
                 <p className="font-medium">{user.email}</p>
                 <p className="text-sm text-muted-foreground">Signed in user</p>
               </div>
-              <div className="text-right text-sm text-muted-foreground">
-                <p>Daily Generations</p>
-                <p className="font-semibold">
-                  {dailyUsed} / {limits?.daily_generations ?? 'Unlimited'}
-                </p>
+              <div className="flex items-center gap-3">
+                {!isPro && (
+                  <Button size="sm" variant="outline" onClick={() => navigate('/account#promo')}>
+                    Apply Promo
+                  </Button>
+                )}
+                <div className="text-right text-sm text-muted-foreground">
+                  <p>Daily Generations</p>
+                  <p className="font-semibold">
+                    {dailyUsed} / {limits?.daily_generations ?? 'Unlimited'}
+                  </p>
+                </div>
               </div>
             </div>
             <Separator />
@@ -345,7 +510,7 @@ export default function Account() {
                   </div>
                 ) : (
                   <RadioGroup
-                    value={brandVoiceSelection?.id || ''}
+                    value={defaultBrandVoiceId}
                     onValueChange={handleSelectBrandVoice}
                     className="space-y-3"
                   >
@@ -354,16 +519,16 @@ export default function Account() {
                         key={voice.id}
                         className={cn(
                           'flex items-start gap-3 p-4 rounded-lg border cursor-pointer hover:border-primary transition',
-                          brandVoiceSelection?.id === voice.id && 'border-primary bg-primary/5'
+                          defaultBrandVoiceId === voice.id && 'border-primary bg-primary/5'
                         )}
                       >
                         <RadioGroupItem value={voice.id} className="mt-1" />
                         <div className="space-y-1">
-                          <p className="font-medium">{voice.label || 'Untitled voice'}</p>
+                          <p className="font-medium">{voice.title || 'Untitled voice'}</p>
                           <p className="text-sm text-muted-foreground">Tone: {voice.voice.tone}</p>
                           <p className="text-sm text-muted-foreground">Sentence Style: {voice.voice.sentenceStyle}</p>
                           <div className="flex flex-wrap gap-2 pt-1">
-                            {voice.voice.vocabulary?.map((vocab) => (
+                            {voice.voice?.vocabulary?.map((vocab) => (
                               <span
                                 key={vocab}
                                 className="px-2 py-1 rounded-full bg-primary/10 text-primary text-xs"
@@ -372,8 +537,8 @@ export default function Account() {
                               </span>
                             ))}
                           </div>
-                          <p className="text-xs text-muted-foreground">Strictness: {voice.voice.strictness}</p>
-                          {voice.voice.formatTraits && voice.voice.formatTraits.length > 0 && (
+                          <p className="text-xs text-muted-foreground">Strictness: {voice.voice?.strictness}</p>
+                          {voice.voice?.formatTraits && voice.voice.formatTraits.length > 0 && (
                             <p className="text-xs text-muted-foreground">
                               Format: {voice.voice.formatTraits.join(', ')}
                             </p>
@@ -388,56 +553,58 @@ export default function Account() {
           </CardContent>
         </Card>
 
-        <Card>
-          <Collapsible open={adminOpen} onOpenChange={setAdminOpen}>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Admin Tools</CardTitle>
-                  <CardDescription>Internal tools for manual upgrades</CardDescription>
+        {adminEnabled && (
+          <Card>
+            <Collapsible open={adminOpen} onOpenChange={setAdminOpen}>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Admin Tools</CardTitle>
+                    <CardDescription>Internal tools for manual upgrades</CardDescription>
+                  </div>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" size="sm">
+                      {adminOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    </Button>
+                  </CollapsibleTrigger>
                 </div>
-                <CollapsibleTrigger asChild>
-                  <Button variant="ghost" size="sm">
-                    {adminOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </CardHeader>
+              <CollapsibleContent>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="admin-user">Target User ID</Label>
+                    <Input
+                      id="admin-user"
+                      placeholder="Enter user ID"
+                      value={adminUserId}
+                      onChange={(e) => setAdminUserId(e.target.value)}
+                      disabled={isAdminActivating}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="admin-plan">Plan</Label>
+                    <select
+                      id="admin-plan"
+                      className="w-full rounded-md border px-3 py-2 text-sm"
+                      value={adminPlan}
+                      onChange={(e) => setAdminPlan(e.target.value as 'pro' | 'free')}
+                      disabled={isAdminActivating}
+                    >
+                      <option value="pro">Pro</option>
+                      <option value="free">Free</option>
+                    </select>
+                  </div>
+                  <Button onClick={handleAdminUpgrade} disabled={isAdminActivating} className="w-full sm:w-auto">
+                    {isAdminActivating ? 'Applying...' : 'Apply Plan'}
                   </Button>
-                </CollapsibleTrigger>
-              </div>
-            </CardHeader>
-            <CollapsibleContent>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="admin-user">Target User ID</Label>
-                  <Input
-                    id="admin-user"
-                    placeholder="Enter user ID"
-                    value={adminUserId}
-                    onChange={(e) => setAdminUserId(e.target.value)}
-                    disabled={isAdminActivating}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="admin-plan">Plan</Label>
-                  <select
-                    id="admin-plan"
-                    className="w-full rounded-md border px-3 py-2 text-sm"
-                    value={adminPlan}
-                    onChange={(e) => setAdminPlan(e.target.value as 'pro' | 'free')}
-                    disabled={isAdminActivating}
-                  >
-                    <option value="pro">Pro</option>
-                    <option value="free">Free</option>
-                  </select>
-                </div>
-                <Button onClick={handleAdminUpgrade} disabled={isAdminActivating} className="w-full sm:w-auto">
-                  {isAdminActivating ? 'Applying...' : 'Apply Plan'}
-                </Button>
-                <p className="text-xs text-muted-foreground">
-                  Requires x-admin-secret header set via environment variable.
-                </p>
-              </CardContent>
-            </CollapsibleContent>
-          </Collapsible>
-        </Card>
+                  <p className="text-xs text-muted-foreground">
+                    Requires x-admin-secret header set via environment variable.
+                  </p>
+                </CardContent>
+              </CollapsibleContent>
+            </Collapsible>
+          </Card>
+        )}
 
         {!isPro && (
           <Card>
