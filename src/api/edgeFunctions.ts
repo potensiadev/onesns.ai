@@ -7,11 +7,13 @@ export interface EdgeFunctionResponse<T = any> {
 
 export async function callEdgeFunction<T = any>(
   functionName: string,
-  body?: Record<string, any>
+  body?: Record<string, any>,
+  options?: { headers?: Record<string, string> }
 ): Promise<EdgeFunctionResponse<T>> {
   try {
     const { data, error } = await supabase.functions.invoke(functionName, {
       body: body || {},
+      headers: options?.headers,
     });
 
     if (error) {
@@ -38,9 +40,9 @@ export const edgeFunctions = {
   }) => callEdgeFunction('generate-post', body),
   
   generateVariations: (body: {
-    originalContent: string;
-    platform: string;
-    count: number;
+    baseText: string;
+    styles: string[];
+    brandVoiceId?: string | null;
   }) => callEdgeFunction('generate-variations', body),
   
   blogToSns: (body: {
@@ -51,6 +53,24 @@ export const edgeFunctions = {
   }) => callEdgeFunction('generate-post', body),
   
   extractBrandVoice: (body: {
-    sampleContent: string;
+    samples: string[];
+    title?: string;
   }) => callEdgeFunction('brand-voice-extract', body),
+
+  getGenerations: (body: {
+    limit?: number;
+    offset?: number;
+    types?: string[] | null;
+    from?: string | null;
+    to?: string | null;
+  }) => callEdgeFunction('get-generations', body),
+
+  activatePromo: (body: { code: string }) => callEdgeFunction('activate-promo', body),
+
+  adminUpgradeUser: (body: { userId: string; plan: 'pro' | 'free' }) =>
+    callEdgeFunction('admin-upgrade-user', body, {
+      headers: {
+        'x-admin-secret': import.meta.env.VITE_ADMIN_UPGRADE_SECRET || '',
+      },
+    }),
 };

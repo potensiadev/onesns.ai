@@ -1,9 +1,10 @@
 // deno-lint-ignore-file no-explicit-any
-import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import { serve } from "https://deno.land/std/http/server.ts";
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 import { z } from "https://deno.land/x/zod@v3.23.8/mod.ts";
 import { aiRouter } from "../_shared/aiRouter.ts";
-import { corsHeaders, jsonError, jsonOk } from "../_shared/errors.ts";
+import { jsonError, jsonOk } from "../_shared/errors.ts";
+import { corsHeaders } from "../_shared/cors.ts";
 import { BrandVoice, promptBuilder, RequestShape } from "../_shared/promptBuilder.ts";
 import { createSupabaseClient, getAuthenticatedUser } from "../_shared/supabaseClient.ts";
 import { platformEnum, platformRules, type Platform } from "../_shared/platformRules.ts";
@@ -72,11 +73,7 @@ function extractTextFromHtml(html: string): string {
   return text.replace(/\s+/g, " ").trim();
 }
 
-serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
-
+async function handler(req: Request) {
   let supabase: SupabaseClient;
   try {
     supabase = createSupabaseClient(req);
@@ -173,42 +170,42 @@ serve(async (req) => {
       );
     }
 
-    const rules = payload.platforms.reduce((acc, platform) => {
-      acc[platform] = platformRules[platform];
-      return acc;
-    }, {} as Record<Platform, string>);
+    const posts: Partial<Record<Platform, string>> = {};
 
-    const requestShape: RequestShape = {
-      type: "blog",
-      blogContent: payload.tone ? `Tone hint: ${payload.tone}\n\n${summary}` : summary,
-      platforms: payload.platforms,
-      brandVoiceId: payload.brandVoiceId ?? null,
-    };
+    for (const platform of payload.platforms) {
+      const rules = { [platform]: platformRules[platform] } as Record<Platform, string>;
+      const requestShape: RequestShape = {
+        type: "blog",
+        blogContent: payload.tone ? `Tone hint: ${payload.tone}\n\n${summary}` : summary,
+        platforms: [platform],
+        brandVoiceId: payload.brandVoiceId ?? null,
+      };
 
-    const generationPrompt = promptBuilder({ request: requestShape, platformRules: rules, brandVoice });
+      const generationPrompt = promptBuilder({ request: requestShape, platformRules: rules, brandVoice });
 
-    let aiResult;
-    try {
-      aiResult = await aiRouter(generationPrompt);
-    } catch (error) {
-      console.error("AI provider error", error);
-      return jsonError(
-        "PROVIDER_ERROR",
-        "All AI providers failed", 502, error instanceof Error ? error.message : String(error),
-      );
-    }
+      let aiResult;
+      try {
+        aiResult = await aiRouter(generationPrompt, "primary", platform);
+      } catch (error) {
+        console.error("AI provider error", error);
+        return jsonError(
+          "PROVIDER_ERROR",
+          "All AI providers failed", 502, error instanceof Error ? error.message : String(error),
+        );
+      }
 
-    let posts: Partial<Record<Platform, string>>;
-    try {
-      posts = parsePosts(aiResult.content, payload.platforms);
-    } catch (error) {
-      console.error(error);
-      return jsonError(
-        "PROVIDER_ERROR",
-        "AI response could not be parsed",
-        502,
-        error instanceof Error ? error.message : String(error),
-      );
+      try {
+        const parsed = parsePosts(aiResult.content, [platform]);
+        posts[platform] = parsed[platform];
+      } catch (error) {
+        console.error(error);
+        return jsonError(
+          "PROVIDER_ERROR",
+          "AI response could not be parsed",
+          502,
+          error instanceof Error ? error.message : String(error),
+        );
+      }
     }
 
     const insertPayload = {
@@ -242,6 +239,39 @@ serve(async (req) => {
       "An unexpected error occurred",
       500,
       error instanceof Error ? error.message : String(error),
+    );
+  }
+}
+
+serve(async (req: Request) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
+  try {
+    const response = await handler(req);
+
+    if (response instanceof Response) {
+      const text = await response.text();
+      return new Response(text, {
+        status: response.status || 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const body = (response as any)?.body ?? response;
+    return new Response(JSON.stringify(body), {
+      status: (response as any)?.status ?? 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (err) {
+    console.error("[Edge Error]", err);
+    return new Response(
+      JSON.stringify({ error: String((err as any)?.message ?? err) }),
+      {
+        status: 500,
+        headers: corsHeaders,
+      },
     );
   }
 });

@@ -41,7 +41,7 @@ async function ensureProfile(supabase: SupabaseClient, userId: string) {
   const { data: existing, error } = await supabase
     .from("profiles")
     .select("plan, limits")
-    .eq("user_id", userId)
+    .eq("id", userId)
     .maybeSingle();
 
   if (error) {
@@ -50,7 +50,7 @@ async function ensureProfile(supabase: SupabaseClient, userId: string) {
 
   if (existing) return existing;
 
-  const bootstrap = { user_id: userId, plan: "free", limits: LIMIT_SET.free };
+  const bootstrap = { id: userId, plan: "free", limits: LIMIT_SET.free };
   const { error: insertError } = await supabase.from("profiles").insert(bootstrap);
 
   if (insertError) {
@@ -86,7 +86,11 @@ export async function usageGuard(
 ): Promise<UsageGuardResult> {
   const profile = await ensureProfile(supabase, userId);
   const plan = (profile.plan as PlanName) ?? "free";
-  const limits: LimitsConfig = profile.limits ?? LIMIT_SET[plan as "free" | "pro"] ?? LIMIT_SET.free;
+  const planLimits = LIMIT_SET[plan as "free" | "pro"] ?? LIMIT_SET.free;
+  const limits: LimitsConfig = {
+    ...planLimits,
+    ...(profile.limits as Partial<LimitsConfig> | null | undefined),
+  };
 
   // Daily quota
   const usedToday = await countTodayUsage(supabase, userId);

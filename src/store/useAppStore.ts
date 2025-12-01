@@ -14,12 +14,25 @@ export interface LimitsConfig {
   priority_routing: boolean;
 }
 
+export interface BrandVoiceSelection {
+  id: string;
+  label?: string;
+  voice: {
+    tone: string;
+    sentenceStyle: string;
+    vocabulary: string[];
+    strictness: number;
+    formatTraits?: string[];
+  };
+}
+
 interface AppState {
   user: any | null;
   plan: Plan;
   limits: LimitsConfig;
   dailyUsed: number;
   loading: boolean;
+  brandVoiceSelection: BrandVoiceSelection | null;
   
   // Computed getters
   brandVoiceAllowed: boolean;
@@ -29,29 +42,53 @@ interface AppState {
   
   // Actions
   setUser: (user: any) => void;
+  setBrandVoice: (selection: BrandVoiceSelection | null) => void;
   loadProfileAndLimits: () => Promise<void>;
   loadDailyUsage: () => Promise<void>;
   refreshAfterBilling: () => Promise<void>;
   reset: () => void;
 }
 
-const defaultLimits: LimitsConfig = {
+export const DEFAULT_LIMITS: LimitsConfig = {
   daily_generations: 5,
-  max_platforms_per_request: 2,
+  max_platforms_per_request: 1,
   brand_voice: false,
   blog_to_sns: true,
   max_blog_length: 2000,
-  variations_per_request: 2,
+  variations_per_request: 1,
   history_limit: 50,
   priority_routing: false,
+};
+
+export const PRO_LIMITS: LimitsConfig = {
+  daily_generations: null,
+  max_platforms_per_request: 6,
+  brand_voice: true,
+  blog_to_sns: true,
+  max_blog_length: null,
+  variations_per_request: null,
+  history_limit: null,
+  priority_routing: true,
 };
 
 export const useAppStore = create<AppState>((set, get) => ({
   user: null,
   plan: 'free',
-  limits: defaultLimits,
+  limits: DEFAULT_LIMITS,
   dailyUsed: 0,
   loading: true,
+  brandVoiceSelection:
+    typeof window !== 'undefined'
+      ? (() => {
+          try {
+            const stored = localStorage.getItem('defaultBrandVoiceSelection');
+            return stored ? (JSON.parse(stored) as BrandVoiceSelection) : null;
+          } catch (err) {
+            console.error('Failed to read stored brand voice selection', err);
+            return null;
+          }
+        })()
+      : null,
   
   // Computed getters
   get brandVoiceAllowed() {
@@ -68,6 +105,22 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   
   setUser: (user) => set({ user }),
+
+  setBrandVoice: (selection) => {
+    try {
+      if (typeof window !== 'undefined') {
+        if (selection) {
+          localStorage.setItem('defaultBrandVoiceSelection', JSON.stringify(selection));
+        } else {
+          localStorage.removeItem('defaultBrandVoiceSelection');
+        }
+      }
+    } catch (err) {
+      console.error('Failed to persist brand voice selection', err);
+    }
+
+    set({ brandVoiceSelection: selection });
+  },
   
   loadProfileAndLimits: async () => {
     try {
@@ -76,7 +129,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         set({ loading: false });
         return;
       }
-      
+
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('plan, limits')
@@ -89,18 +142,17 @@ export const useAppStore = create<AppState>((set, get) => ({
         return;
       }
       
-      if (profile) {
-        // Type assertion for limits - it's stored as JSONB in database
-        const profileLimits = profile.limits as unknown;
-        set({
-          user,
-          plan: (profile.plan as Plan) || 'free',
-          limits: (profileLimits as LimitsConfig) || defaultLimits,
-          loading: false,
-        });
-      } else {
-        set({ user, loading: false });
-      }
+      const plan = (profile?.plan as Plan) || 'free';
+      const limitOverrides = (profile?.limits as Partial<LimitsConfig> | null | undefined) ?? undefined;
+      const baseLimits = plan === 'pro' ? PRO_LIMITS : DEFAULT_LIMITS;
+      const limits = { ...baseLimits, ...limitOverrides };
+
+      set({
+        user,
+        plan,
+        limits,
+        loading: false,
+      });
     } catch (error) {
       console.error('Error in loadProfileAndLimits:', error);
       set({ loading: false });
@@ -141,11 +193,22 @@ export const useAppStore = create<AppState>((set, get) => ({
     await get().loadDailyUsage();
   },
   
-  reset: () => set({
-    user: null,
-    plan: 'free',
-    limits: defaultLimits,
-    dailyUsed: 0,
-    loading: false,
-  }),
+  reset: () => {
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('defaultBrandVoiceSelection');
+      }
+    } catch (err) {
+      console.error('Failed to clear stored brand voice selection', err);
+    }
+    
+    set({
+      user: null,
+      plan: 'free',
+      limits: DEFAULT_LIMITS,
+      dailyUsed: 0,
+      loading: false,
+      brandVoiceSelection: null,
+    });
+  },
 }));

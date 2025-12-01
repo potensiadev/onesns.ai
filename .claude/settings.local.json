@@ -10,7 +10,11 @@
       "Bash(git stash:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(gh repo clone:*)",
+      "Bash(printf:*)",
+      "Bash(git credential:*)",
+      "Bash(git config:*)"
     ],
     "deny": [],
     "ask": []
