@@ -22,12 +22,12 @@ export async function runSupabaseDiagnostics() {
 
     const user = userRes.data.user;
 
-    // 🔥 FIXED: must use user_id (not id)
+    // Fetch profile using id column
     const { data: profile, error: profileErr } = await supabase
       .from("profiles")
       .select("*")
-      .eq("user_id", user.id)
-      .single();
+      .eq("id", user.id)
+      .maybeSingle();
 
     console.log("Profile:", profile, profileErr);
 
