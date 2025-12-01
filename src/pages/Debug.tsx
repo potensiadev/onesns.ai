@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { runSupabaseDiagnostics } from "/debug/supabase-test";
+import { runSupabaseDiagnostics } from "../debug/supabase-test";
 
 export default function Debug() {
   useEffect(() => {
