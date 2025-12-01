@@ -7,7 +7,7 @@ import { jsonError, jsonOk } from "../_shared/errors.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { BrandVoice, promptBuilder, RequestShape } from "../_shared/promptBuilder.ts";
 import { createSupabaseClient, getAuthenticatedUser } from "../_shared/supabaseClient.ts";
-import { platformEnum, platformRules, type Platform } from "../_shared/platformRules.ts";
+import { platformEnum, platformModelMap, platformRules, type Platform } from "../_shared/platformRules.ts";
 import { usageGuard } from "../_shared/usageGuard.ts";
 
 const requestSchema = z
@@ -155,11 +155,14 @@ async function handler(req: Request) {
       const summaryPrompt =
         "Summarize the following blog/article content into a concise, well-structured summary (max 220 words). Return plain text only.\n" +
         sourceContent;
-      const summaryResult = await aiRouter(summaryPrompt);
-      if (!summaryResult.content || !summaryResult.content.trim()) {
+      const summaryResult = await aiRouter.generate({
+        systemPrompt: "You are a helpful writing assistant who produces concise summaries.",
+        userPrompt: summaryPrompt,
+      });
+      if (!summaryResult.text || !summaryResult.text.trim()) {
         return jsonError("PROVIDER_ERROR", "AI response missing summary content", 502);
       }
-      summary = summaryResult.content.trim();
+      summary = summaryResult.text.trim();
     } catch (error) {
       console.error("AI summary error", error);
       return jsonError(
@@ -185,7 +188,14 @@ async function handler(req: Request) {
 
       let aiResult;
       try {
-        aiResult = await aiRouter(generationPrompt, "primary", platform);
+        const platformConfig = platformModelMap[platform];
+        aiResult = await aiRouter.generate({
+          systemPrompt: "You are an expert social media strategist. Return JSON only for the requested platforms.",
+          userPrompt: generationPrompt,
+          providerPreference: platformConfig?.provider,
+          model: platformConfig?.model,
+          platform,
+        });
       } catch (error) {
         console.error("AI provider error", error);
         return jsonError(
@@ -195,7 +205,7 @@ async function handler(req: Request) {
       }
 
       try {
-        const parsed = parsePosts(aiResult.content, [platform]);
+        const parsed = parsePosts(aiResult.text, [platform]);
         posts[platform] = parsed[platform];
       } catch (error) {
         console.error(error);

@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
+import { aiRouter } from "../_shared/aiRouter.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -131,63 +132,22 @@ serve(async (req) => {
 
     const requestData = validationResult.data;
     const platforms = requestData.platforms;
-    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-
-    if (!GEMINI_API_KEY) {
-      throw new Error("GEMINI_API_KEY is not configured");
-    }
 
     console.log("Request type:", requestData.type, "Platforms:", platforms);
 
     const posts: Record<string, string> = {};
 
-    // Helper function to call Gemini AI
-    async function callGemini(systemPrompt: string, userPrompt: string) {
-      const fullPrompt = `${systemPrompt}\n\n${userPrompt}`;
-
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  {
-                    text: fullPrompt,
-                  },
-                ],
-              },
-            ],
-            generationConfig: {
-              temperature: 0.9,
-              topK: 40,
-              topP: 0.95,
-              maxOutputTokens: 2048,
-            },
-          }),
-        },
-      );
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("Gemini API error:", response.status, errorText);
-
-        if (response.status === 429) {
-          return { error: "Rate limit exceeded. Please try again in a moment.", status: 429 };
-        }
-        if (response.status === 403) {
-          return { error: "API key is invalid or expired.", status: 403 };
-        }
-        throw new Error(`Gemini API error: ${response.status}`);
+    async function callAI(systemPrompt: string, userPrompt: string) {
+      try {
+        const result = await aiRouter.generate({ systemPrompt, userPrompt });
+        return { content: result.text, status: 200 };
+      } catch (error) {
+        console.error("AI routing error", error);
+        return {
+          error: error instanceof Error ? error.message : "Unknown AI error",
+          status: 502,
+        };
       }
-
-      const data = await response.json();
-      const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-      return { content: generatedText, status: 200 };
     }
 
     // Branch based on request type
@@ -210,7 +170,7 @@ Content: ${content}
 
 Generate ONLY the post content. Do not include any meta-commentary, explanations, or labels.`;
 
-        const result = await callGemini(systemPrompt, userPrompt);
+        const result = await callAI(systemPrompt, userPrompt);
 
         if (result.error) {
           return new Response(JSON.stringify({ error: result.error }), {
@@ -252,7 +212,7 @@ Provide a structured summary in JSON format:
   "cta": "..."
 }`;
 
-      const analysisResult = await callGemini(analysisSystemPrompt, analysisUserPrompt);
+      const analysisResult = await callAI(analysisSystemPrompt, analysisUserPrompt);
 
       if (analysisResult.error) {
         return new Response(JSON.stringify({ error: analysisResult.error }), {
@@ -308,7 +268,7 @@ Create a ${platform} post that captures the essence of the blog while being opti
 
 Generate ONLY the post content. Do not include any meta-commentary, explanations, or labels.`;
 
-        const result = await callGemini(systemPrompt, userPrompt);
+        const result = await callAI(systemPrompt, userPrompt);
 
         if (result.error) {
           return new Response(JSON.stringify({ error: result.error }), {
