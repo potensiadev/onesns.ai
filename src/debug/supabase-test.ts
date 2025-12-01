@@ -1,37 +1,20 @@
 import { supabase } from "@/integrations/supabase/client";
 
-/**
- * OneSNS.ai Supabase Diagnostics
- * - Checks env (URL, anon key)
- * - Validates session + user
- * - Reads profiles table with RLS applied
- * - Reads brand_voices, usage_events
- * - Optional: Calls sample edge function
- */
 export async function runSupabaseDiagnostics() {
-  console.group("🔍 OneSNS.ai Supabase Diagnostics");
+  console.group("🔎 OneSNS.ai Supabase Diagnostics");
 
   try {
-    // ---------------------------------------------------------
-    // ENV CHECK
-    // ---------------------------------------------------------
+    // ======================================================
+    // 1) ENV
+    // ======================================================
     console.group("🌐 Environment Variables");
-
-    const url = import.meta.env.VITE_SUPABASE_URL;
-    const anon = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-    console.log("VITE_SUPABASE_URL:", url);
-    console.log("VITE_SUPABASE_ANON_KEY present:", !!anon);
-
-    if (!url || !anon) {
-      console.warn("❌ Missing Supabase env variables");
-    }
-
+    console.log("VITE_SUPABASE_URL:", import.meta.env.VITE_SUPABASE_URL);
+    console.log("VITE_SUPABASE_ANON_KEY present:", !!import.meta.env.VITE_SUPABASE_ANON_KEY);
     console.groupEnd();
 
-    // ---------------------------------------------------------
-    // AUTH SESSION CHECK
-    // ---------------------------------------------------------
+    // ======================================================
+    // 2) AUTH SESSION
+    // ======================================================
     console.group("🔐 Auth Session");
 
     const sessionRes = await supabase.auth.getSession();
@@ -40,98 +23,115 @@ export async function runSupabaseDiagnostics() {
     const userRes = await supabase.auth.getUser();
     console.log("auth.getUser():", userRes);
 
-    if (userRes.error) console.error("⚠️ getUser() Error:", userRes.error);
-
     if (!userRes.data?.user) {
-      console.warn("⚠️ Not logged in — RLS reads will fail.");
+      console.warn("⚠️ Not logged in – login required for RLS tests.");
       console.groupEnd();
       console.groupEnd();
       return;
     }
-
     const user = userRes.data.user;
+    console.groupEnd();
 
-    console.groupEnd(); // END AUTH
-
-    // ---------------------------------------------------------
-    // PROFILES TABLE CHECK
-    // ---------------------------------------------------------
+    // ======================================================
+    // 3) RLS Tests
+    // ======================================================
     console.group("📄 Profiles Table (RLS Test)");
 
     const { data: profile, error: profileErr } = await supabase
       .from("profiles")
-      .select("id, email, full_name, avatar_url, plan, limits")
-      .eq("id", user.id)
+      .select("*")
+      .eq("user_id", user.id)
       .maybeSingle();
 
     console.log("profiles.select:", { profile, profileErr });
-
-    if (profileErr) console.error("❌ profiles RLS error:", profileErr);
-
     console.groupEnd();
 
-    // ---------------------------------------------------------
-    // BRAND VOICES TABLE CHECK
-    // ---------------------------------------------------------
+    // ======================================================
+    // 4) brand_voices
+    // ======================================================
     console.group("🎤 Brand Voices");
 
-    const { data: voices, error: voicesErr } = await supabase
-      .from("brand_voices")
-      .select("id, user_id, label, extracted_style, created_at, updated_at")
-      .eq("user_id", user.id);
+    const { data: voices, error: voicesErr } = await supabase.from("brand_voices").select("*").eq("user_id", user.id);
 
     console.log("brand_voices:", { voices, voicesErr });
-
-    if (voicesErr) console.error("❌ brand_voices RLS error:", voicesErr);
-
     console.groupEnd();
 
-    // ---------------------------------------------------------
-    // USAGE EVENTS TABLE CHECK
-    // ---------------------------------------------------------
+    // ======================================================
+    // 5) usage_events
+    // ======================================================
     console.group("📊 Usage Events");
 
     const { data: usage, error: usageErr } = await supabase
       .from("usage_events")
-      .select("id, user_id, event_type, meta, created_at")
+      .select("*")
       .eq("user_id", user.id)
       .limit(5);
 
     console.log("usage_events:", { usage, usageErr });
-
-    if (usageErr) console.error("❌ usage_events RLS error:", usageErr);
-
     console.groupEnd();
 
-    // ---------------------------------------------------------
-    // OPTIONAL — EDGE FUNCTION CHECK
-    // (only if deployed)
-    // ---------------------------------------------------------
-    console.group("⚙️ Edge Function Test (Optional)");
+    // ======================================================
+    // 6) **Edge Function CORS Test** — 핵심
+    // ======================================================
+    console.group("⚙️ Edge Function CORS Tests");
 
-    try {
-      const edgeRes = await fetch(`${url}/functions/v1/hello`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${anon}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ ping: true }),
-      });
+    async function testEdge(functionName: string, payload: any) {
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${functionName}`;
 
-      console.log("Edge response status:", edgeRes.status);
-      const edgeJson = await edgeRes.json().catch(() => null);
-      console.log("Edge response JSON:", edgeJson);
-    } catch (edgeErr) {
-      console.error("⚠️ Edge function error:", edgeErr);
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${sessionRes.data.session?.access_token}`,
+          },
+          body: JSON.stringify(payload),
+        });
+
+        if (!res.ok) {
+          const text = await res.text();
+          console.error(`❌ ${functionName} returned HTTP ${res.status}`, text);
+        } else {
+          const json = await res.json();
+          console.log(`✅ ${functionName}`, json);
+        }
+      } catch (err) {
+        console.error(`❌ ${functionName} error:`, err);
+      }
     }
 
+    // Minimal safe payloads to test CORS only:
+    await testEdge("generate-post", {
+      type: "simple",
+      topic: "Hello world",
+      platforms: ["twitter"],
+    });
+
+    await testEdge("generate-variations", {
+      base_text: "Hello world",
+      count: 1,
+    });
+
+    await testEdge("blog-to-sns", {
+      url: "",
+      content: "This is a test post.",
+      platforms: ["twitter"],
+    });
+
+    await testEdge("brand-voice-extract", {
+      samples: ["This is a test writing sample."],
+    });
+
+    await testEdge("get-generations", {
+      limit: 5,
+      offset: 0,
+    });
+
     console.groupEnd();
 
-    // ---------------------------------------------------------
-    console.log("🎉 Diagnostics complete.");
+    console.info("🎉 Diagnostics complete.");
   } catch (err) {
-    console.error("❌ Diagnostics failed:", err);
+    console.error("❌ Diagnostics failure:", err);
   }
 
   console.groupEnd();
