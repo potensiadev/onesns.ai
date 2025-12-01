@@ -49,24 +49,24 @@ interface AppState {
   reset: () => void;
 }
 
-const defaultLimits: LimitsConfig = {
+export const DEFAULT_LIMITS: LimitsConfig = {
   daily_generations: 5,
-  max_platforms_per_request: 2,
+  max_platforms_per_request: 1,
   brand_voice: false,
   blog_to_sns: true,
   max_blog_length: 2000,
-  variations_per_request: 2,
+  variations_per_request: 1,
   history_limit: 50,
   priority_routing: false,
 };
 
-const proLimits: LimitsConfig = {
-  daily_generations: 999,
-  max_platforms_per_request: null,
+export const PRO_LIMITS: LimitsConfig = {
+  daily_generations: null,
+  max_platforms_per_request: 6,
   brand_voice: true,
   blog_to_sns: true,
-  max_blog_length: 10000,
-  variations_per_request: 5,
+  max_blog_length: null,
+  variations_per_request: null,
   history_limit: null,
   priority_routing: true,
 };
@@ -74,7 +74,7 @@ const proLimits: LimitsConfig = {
 export const useAppStore = create<AppState>((set, get) => ({
   user: null,
   plan: 'free',
-  limits: defaultLimits,
+  limits: DEFAULT_LIMITS,
   dailyUsed: 0,
   loading: true,
   brandVoiceSelection:
@@ -129,7 +129,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         set({ loading: false });
         return;
       }
-      
+
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('plan, limits')
@@ -142,21 +142,17 @@ export const useAppStore = create<AppState>((set, get) => ({
         return;
       }
       
-      if (profile) {
-        const plan = (profile.plan as Plan) || 'free';
-        const limits = plan === 'pro' ? proLimits : defaultLimits;
+      const plan = (profile?.plan as Plan) || 'free';
+      const limitOverrides = (profile?.limits as Partial<LimitsConfig> | null | undefined) ?? undefined;
+      const baseLimits = plan === 'pro' ? PRO_LIMITS : DEFAULT_LIMITS;
+      const limits = { ...baseLimits, ...limitOverrides };
 
-        console.log('DEBUG loadProfile', { plan, limits });
-
-        set({
-          user,
-          plan,
-          limits,
-          loading: false,
-        });
-      } else {
-        set({ user, loading: false, plan: 'free', limits: defaultLimits });
-      }
+      set({
+        user,
+        plan,
+        limits,
+        loading: false,
+      });
     } catch (error) {
       console.error('Error in loadProfileAndLimits:', error);
       set({ loading: false });
@@ -209,7 +205,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({
       user: null,
       plan: 'free',
-      limits: defaultLimits,
+      limits: DEFAULT_LIMITS,
       dailyUsed: 0,
       loading: false,
       brandVoiceSelection: null,

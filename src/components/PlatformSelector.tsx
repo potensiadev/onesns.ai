@@ -41,11 +41,9 @@ export const PlatformSelector = ({ selected, onChange, maxPlatforms }: PlatformS
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <label className="text-sm font-medium">Select Platforms</label>
-        {maxPlatforms && (
-          <span className="text-xs text-muted-foreground">
-            {selected.length}/{maxPlatforms} selected
-          </span>
-        )}
+        <span className="text-xs text-muted-foreground">
+          {selected.length}/{PLATFORMS.length} selected
+        </span>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {PLATFORMS.map((platform) => {
