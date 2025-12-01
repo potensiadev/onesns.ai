@@ -1,145 +1,164 @@
 import { platformModelMap } from "./platformRules.ts";
 
-export type AIRouterMode = "primary" | "analysis";
-export type AIRouterResult = { content: string; provider: string };
-type Provider = "openai" | "anthropic" | "google";
+export type Provider = "openai" | "anthropic";
 
-async function callProvider(provider: Provider, model: string, prompt: string): Promise<AIRouterResult> {
-  if (provider === "openai") {
-    const openAiKey = Deno.env.get("OPENAI_API_KEY");
-    if (!openAiKey) throw new Error("OpenAI API key not configured");
+const providerConfig: Record<Provider, { endpoint: string; model: string }> = {
+  openai: {
+    endpoint: "https://api.openai.com/v1/chat/completions",
+    model: "gpt-4.1-mini",
+  },
+  anthropic: {
+    endpoint: "https://api.anthropic.com/v1/messages",
+    model: "claude-3-5-sonnet-latest",
+  },
+};
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${openAiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: "system", content: "Return concise, well-structured answers." },
-          { role: "user", content: prompt },
-        ],
-        temperature: 0.6,
-      }),
-    });
+export type GenerateParams = {
+  systemPrompt: string;
+  userPrompt: string;
+  providerPreference?: Provider;
+  model?: string;
+  platform?: string;
+};
 
-    if (!response.ok) {
-      throw new Error(`OpenAI error: ${response.status} ${await response.text()}`);
-    }
+export type GenerateResult = { text: string; provider: Provider };
 
-    const data = await response.json();
-    const content = data?.choices?.[0]?.message?.content;
-    if (!content || typeof content !== "string") {
-      throw new Error("OpenAI response missing content");
-    }
-    return { content, provider: "openai" };
+function maskKey(key?: string | null): string {
+  if (!key) return "missing";
+  return `${key.slice(0, 4)}...`;
+}
+
+async function callOpenAI({
+  systemPrompt,
+  userPrompt,
+  model,
+  apiKey,
+}: {
+  systemPrompt: string;
+  userPrompt: string;
+  model?: string;
+  apiKey?: string;
+}): Promise<GenerateResult> {
+  if (!apiKey) {
+    throw new Error("OpenAI API key is not configured");
   }
 
-  if (provider === "anthropic") {
-    const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
-    if (!anthropicKey) throw new Error("Anthropic API key not configured");
-
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": anthropicKey,
-        "anthropic-version": "2023-06-01",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        max_tokens: 800,
-        system: "Return concise, well-structured answers.",
-        messages: [{ role: "user", content: prompt }],
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Anthropic error: ${response.status} ${await response.text()}`);
-    }
-
-    const data = await response.json();
-    const content = data?.content?.[0]?.text;
-    if (!content || typeof content !== "string") {
-      throw new Error("Anthropic response missing content");
-    }
-    return { content, provider: "anthropic" };
-  }
-
-  const geminiKey = Deno.env.get("GEMINI_API_KEY");
-  if (!geminiKey) throw new Error("Gemini API key not configured");
-
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.6 },
-      }),
+  const response = await fetch(providerConfig.openai.endpoint, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
     },
-  );
+    body: JSON.stringify({
+      model: model ?? providerConfig.openai.model,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+    }),
+  });
 
   if (!response.ok) {
-    throw new Error(`Gemini error: ${response.status} ${await response.text()}`);
+    const errorText = await response.text();
+    throw new Error(`OpenAI error: ${response.status} ${errorText}`);
   }
 
   const data = await response.json();
-  const content = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  const content = data?.choices?.[0]?.message?.content;
   if (!content || typeof content !== "string") {
-    throw new Error("Gemini response missing content");
+    throw new Error("OpenAI response missing content");
   }
-  return { content, provider: "gemini" };
+
+  return { text: content, provider: "openai" };
 }
 
-function buildProviderAttempts(prompt: string, mode: AIRouterMode): Array<() => Promise<AIRouterResult>> {
-  const providerAttempts: Array<() => Promise<AIRouterResult>> = [];
-
-  if (Deno.env.get("OPENAI_API_KEY")) {
-    providerAttempts.push(() => callProvider("openai", mode === "primary" ? "gpt-4.1" : "gpt-4o-mini", prompt));
+async function callAnthropic({
+  systemPrompt,
+  userPrompt,
+  model,
+  apiKey,
+}: {
+  systemPrompt: string;
+  userPrompt: string;
+  model?: string;
+  apiKey?: string;
+}): Promise<GenerateResult> {
+  if (!apiKey) {
+    throw new Error("Anthropic API key is not configured");
   }
 
-  if (Deno.env.get("ANTHROPIC_API_KEY")) {
-    providerAttempts.push(() =>
-      callProvider("anthropic", mode === "primary" ? "claude-3-5-sonnet-20240620" : "claude-3-haiku-20240307", prompt)
-    );
+  const response = await fetch(providerConfig.anthropic.endpoint, {
+    method: "POST",
+    headers: {
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      model: model ?? providerConfig.anthropic.model,
+      max_tokens: 2048,
+      messages: [{ role: "user", content: userPrompt }],
+      system: systemPrompt,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Anthropic error: ${response.status} ${errorText}`);
   }
 
-  if (Deno.env.get("GEMINI_API_KEY")) {
-    providerAttempts.push(() => callProvider("google", mode === "primary" ? "gemini-pro" : "gemini-flash-lite", prompt));
+  const data = await response.json();
+  const content = data?.content?.[0]?.text;
+  if (!content || typeof content !== "string") {
+    throw new Error("Anthropic response missing content");
   }
 
-  return providerAttempts;
+  return { text: content, provider: "anthropic" };
 }
 
-export async function aiRouter(
-  prompt: string,
-  mode: AIRouterMode = "primary",
-  platform?: string,
-): Promise<AIRouterResult> {
-  const errors: string[] = [];
-  const platformSpec = platform ? platformModelMap[platform] : undefined;
+export const aiRouter = {
+  async generate({ systemPrompt, userPrompt, providerPreference, model, platform }: GenerateParams): Promise<GenerateResult> {
+    const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
+    const anthropicApiKey = Deno.env.get("ANTHROPIC_API_KEY");
 
-  if (platformSpec) {
-    try {
-      return await callProvider(platformSpec.provider, platformSpec.model, prompt);
-    } catch (err) {
-      errors.push(err instanceof Error ? err.message : String(err));
+    if (!openaiApiKey && !anthropicApiKey) {
+      throw new Error("No AI providers are configured. Please add OPENAI_API_KEY or ANTHROPIC_API_KEY.");
     }
-  }
 
-  const providerAttempts = buildProviderAttempts(prompt, mode);
+    const platformSpec = platform ? platformModelMap[platform] : undefined;
+    const preferredProvider = providerPreference ?? platformSpec?.provider;
+    const orderedProviders: Provider[] = preferredProvider
+      ? preferredProvider === "anthropic"
+        ? ["anthropic", "openai"]
+        : ["openai", "anthropic"]
+      : ["openai", "anthropic"];
 
-  for (const attempt of providerAttempts) {
-    try {
-      return await attempt();
-    } catch (err) {
-      errors.push(err instanceof Error ? err.message : String(err));
+    const errors: string[] = [];
+
+    for (const provider of orderedProviders) {
+      try {
+        if (provider === "openai") {
+          return await callOpenAI({
+            systemPrompt,
+            userPrompt,
+            model: model ?? platformSpec?.model,
+            apiKey: openaiApiKey ?? undefined,
+          });
+        }
+
+        return await callAnthropic({
+          systemPrompt,
+          userPrompt,
+          model: model ?? platformSpec?.model,
+          apiKey: anthropicApiKey ?? undefined,
+        });
+      } catch (error) {
+        const safeKey = provider === "openai" ? maskKey(openaiApiKey) : maskKey(anthropicApiKey);
+        console.error(`[aiRouter] ${provider} failed (key: ${safeKey})`, error);
+        errors.push(`${provider}: ${error instanceof Error ? error.message : String(error)}`);
+      }
     }
-  }
 
-  throw new Error(`All providers failed: ${errors.join(" | ")}`);
-}
+    throw new Error(`All providers failed: ${errors.join(" | ")}`);
+  },
+};

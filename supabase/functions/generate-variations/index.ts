@@ -97,7 +97,10 @@ async function handler(req: Request) {
       const prompt = variationPromptBuilder({ baseText: payload.baseText, style, brandVoice });
       let aiResult;
       try {
-        aiResult = await aiRouter(prompt, "primary", undefined);
+        aiResult = await aiRouter.generate({
+          systemPrompt: "You are an expert social content editor. Return plain text only.",
+          userPrompt: prompt,
+        });
       } catch (error) {
         console.error("AI provider error", error);
         return jsonError(
@@ -108,7 +111,7 @@ async function handler(req: Request) {
         );
       }
 
-      const content = aiResult.content?.trim();
+      const content = aiResult.text?.trim();
       if (!content) {
         console.error("Empty AI content for style", style);
         return jsonError("PROVIDER_ERROR", "AI response missing content", 502);

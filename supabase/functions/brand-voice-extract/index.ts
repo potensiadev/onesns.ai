@@ -130,7 +130,11 @@ async function handler(req: Request) {
     const prompt = brandVoiceAnalysisPromptBuilder({ samples: payload.samples });
     let aiResult;
     try {
-      aiResult = await aiRouter(prompt, "analysis");
+      aiResult = await aiRouter.generate({
+        systemPrompt: "You are an expert linguist and brand voice analyst. Return JSON only.",
+        userPrompt: prompt,
+        providerPreference: "anthropic",
+      });
     } catch (error) {
       console.error("AI provider error", error);
       return jsonError(
@@ -143,7 +147,7 @@ async function handler(req: Request) {
 
     let voice;
     try {
-      voice = parseVoice(aiResult.content);
+      voice = parseVoice(aiResult.text);
     } catch (error) {
       console.error(error);
       return jsonError(

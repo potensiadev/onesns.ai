@@ -7,7 +7,7 @@ import { jsonError, jsonOk } from "../_shared/errors.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { BrandVoice, promptBuilder, RequestShape } from "../_shared/promptBuilder.ts";
 import { createSupabaseClient, getAuthenticatedUser } from "../_shared/supabaseClient.ts";
-import { platformEnum, platformRules, type Platform } from "../_shared/platformRules.ts";
+import { platformEnum, platformModelMap, platformRules, type Platform } from "../_shared/platformRules.ts";
 import { usageGuard } from "../_shared/usageGuard.ts";
 
 const requestSchema = z.discriminatedUnion("type", [
@@ -143,7 +143,14 @@ async function handler(req: Request) {
 
       let aiResult;
       try {
-        aiResult = await aiRouter(prompt, "primary", platform);
+        const platformConfig = platformModelMap[platform];
+        aiResult = await aiRouter.generate({
+          systemPrompt: "You are an expert social media strategist. Return JSON only for the requested platforms.",
+          userPrompt: prompt,
+          providerPreference: platformConfig?.provider,
+          model: platformConfig?.model,
+          platform,
+        });
       } catch (error) {
         console.error("AI provider error", error);
         return jsonError(
@@ -155,7 +162,7 @@ async function handler(req: Request) {
       }
 
       try {
-        const parsed = parsePosts(aiResult.content, [platform]);
+        const parsed = parsePosts(aiResult.text, [platform]);
         posts[platform] = parsed[platform]!;
       } catch (error) {
         console.error(error);
