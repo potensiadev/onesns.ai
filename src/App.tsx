@@ -13,6 +13,7 @@ import BrandVoice from "@/pages/BrandVoice";
 import History from "@/pages/History";
 import Account from "@/pages/Account";
 import NotFound from "@/pages/NotFound";
+import Debug from "@/pages/Debug";
 
 const queryClient = new QueryClient();
 
@@ -34,8 +35,9 @@ const App = () => (
               <Route path="/history" element={<History />} />
               <Route path="/account" element={<Account />} />
             </Route>
-            
+
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="/debug" element={<Debug />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
