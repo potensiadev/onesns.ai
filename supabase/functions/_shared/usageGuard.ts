@@ -41,7 +41,7 @@ async function ensureProfile(supabase: SupabaseClient, userId: string) {
   const { data: existing, error } = await supabase
     .from("profiles")
     .select("plan, limits")
-    .eq("id", userId)
+    .eq("user_id", userId)
     .maybeSingle();
 
   if (error) {
@@ -50,7 +50,7 @@ async function ensureProfile(supabase: SupabaseClient, userId: string) {
 
   if (existing) return existing;
 
-  const bootstrap = { id: userId, plan: "free", limits: LIMIT_SET.free };
+  const bootstrap = { user_id: userId, plan: "free", limits: LIMIT_SET.free };
   const { error: insertError } = await supabase.from("profiles").insert(bootstrap);
 
   if (insertError) {

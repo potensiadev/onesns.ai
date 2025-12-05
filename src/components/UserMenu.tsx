@@ -31,7 +31,7 @@ const UserMenu = () => {
         const { data } = await supabase
           .from('profiles')
           .select('full_name, avatar_url, email')
-          .eq('id', user.id)
+          .eq('user_id', user.id)
           .single();
         
         if (data) {

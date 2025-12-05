@@ -100,9 +100,11 @@ export type Database = {
           created_at: string
           email: string | null
           full_name: string | null
-          id: string
           limits: Json | null
           plan: string | null
+          user_id: string
+          industry: string | null
+          preferred_platforms: string[] | null
           updated_at: string
         }
         Insert: {
@@ -110,9 +112,11 @@ export type Database = {
           created_at?: string
           email?: string | null
           full_name?: string | null
-          id: string
           limits?: Json | null
           plan?: string | null
+          user_id: string
+          industry?: string | null
+          preferred_platforms?: string[] | null
           updated_at?: string
         }
         Update: {
@@ -120,9 +124,11 @@ export type Database = {
           created_at?: string
           email?: string | null
           full_name?: string | null
-          id?: string
           limits?: Json | null
           plan?: string | null
+          user_id?: string
+          industry?: string | null
+          preferred_platforms?: string[] | null
           updated_at?: string
         }
         Relationships: []

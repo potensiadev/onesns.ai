@@ -63,7 +63,7 @@ export const AuthModal = ({ open, onOpenChange, onSuccess }: AuthModalProps) => 
       const validated = authSchema.parse({ email, password, fullName });
       setIsLoading(true);
 
-      const redirectUrl = `${window.location.origin}/`;
+      const redirectUrl = new URL('/auth/v1/callback', window.location.origin).toString();
 
       console.log("Attempting signup with:", {
         email: validated.email,
@@ -163,7 +163,7 @@ export const AuthModal = ({ open, onOpenChange, onSuccess }: AuthModalProps) => 
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/`,
+          redirectTo: new URL('/auth/v1/callback', window.location.origin).toString(),
         }
       });
 

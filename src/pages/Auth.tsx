@@ -53,7 +53,7 @@ const Auth = () => {
       const validated = authSchema.parse({ email, password, fullName });
       setIsLoading(true);
 
-      const redirectUrl = `${window.location.origin}/create`;
+      const redirectUrl = new URL('/auth/v1/callback', window.location.origin).toString();
 
       console.log("Attempting signup with:", {
         email: validated.email,
@@ -177,7 +177,7 @@ const Auth = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/create`,
+          redirectTo: new URL('/auth/v1/callback', window.location.origin).toString(),
         }
       });
 
