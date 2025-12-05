@@ -96,8 +96,8 @@ describe('Plan gating', () => {
       fireEvent.click(screen.getByText(label));
     });
 
-    expect(screen.getByText('6/6 selected')).toBeInTheDocument();
-    expect(screen.getByText('YouTube').closest('button')).not.toBeDisabled();
+    expect(screen.getByText('6/6 selected')).toBeTruthy();
+    expect(screen.getByText('YouTube').closest('button')?.disabled).toBeFalsy();
   });
 
   it('blocks free users from exceeding one platform and disables brand voice', async () => {
@@ -122,7 +122,7 @@ describe('Plan gating', () => {
     fireEvent.click(screen.getByText('Facebook'));
     fireEvent.click(screen.getByText('Instagram'));
 
-    expect(screen.getByText('1/6 selected')).toBeInTheDocument();
-    expect(screen.getByText('Instagram').closest('button')).toBeDisabled();
+    expect(screen.getByText('1/6 selected')).toBeTruthy();
+    expect((screen.getByText('Instagram').closest('button') as HTMLButtonElement)?.disabled).toBe(true);
   });
 });
