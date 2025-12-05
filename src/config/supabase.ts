@@ -1,40 +1,14 @@
+// Public Supabase config - anon keys are safe to expose client-side
 const PROJECT_SUPABASE_URL = "https://voalboudivbezmjlzicd.supabase.co";
+const PROJECT_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZvYWxib3VkaXZiZXptamx6aWNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ1MTg0NTksImV4cCI6MjA4MDA5NDQ1OX0.tB_kktKJ50umNOQApC5uWNVFaxa4a8f4iM4R64F37JY";
 
 function getEnv(key: string): string | null {
   if (typeof import.meta === "undefined") return null;
   return (import.meta as any).env?.[key] ?? null;
 }
 
-function validateUrl(value: string | null): string {
-  const url = (value ?? PROJECT_SUPABASE_URL).trim();
-  if (!url) {
-    throw new Error("Missing Supabase URL (expected VITE_ONESNS_SUPABASE_URL)");
-  }
-
-  if (url.includes("gsfsidffh")) {
-    throw new Error("Lovable Supabase URL detected. Please supply your project URL.");
-  }
-
-  try {
-    new URL(url);
-  } catch (error) {
-    throw new Error(`Invalid Supabase URL format: "${url}"`);
-  }
-
-  return url;
-}
-
-function validateAnonKey(value: string | null): string {
-  const key = (value ?? "").trim();
-  if (!key) {
-    throw new Error("Missing Supabase anon key (expected VITE_ONESNS_SUPABASE_ANON_KEY)");
-  }
-
-  return key;
-}
-
-export const SUPABASE_URL = validateUrl(getEnv("VITE_ONESNS_SUPABASE_URL"));
-export const SUPABASE_ANON_KEY = validateAnonKey(getEnv("VITE_ONESNS_SUPABASE_ANON_KEY"));
+export const SUPABASE_URL = getEnv("VITE_ONESNS_SUPABASE_URL") || PROJECT_SUPABASE_URL;
+export const SUPABASE_ANON_KEY = getEnv("VITE_ONESNS_SUPABASE_ANON_KEY") || PROJECT_SUPABASE_ANON_KEY;
 
 export function createSupabaseBrowserConfig() {
   return {

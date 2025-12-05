@@ -133,7 +133,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('plan, limits')
-        .eq('user_id', user.id)
+        .eq('id', user.id)
         .maybeSingle();
       
       if (error) {
